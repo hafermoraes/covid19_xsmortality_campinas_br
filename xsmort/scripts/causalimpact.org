@@ -1,0 +1,85 @@
+#+title: Inferência causal para séries temporais
+#+author: Rafael Rodrigues de Moraes (ra009681, Doutorando em Demografia pelo IFCH/Unicamp)
+#+startup: inlineimages showall align hidestars
+#+property: header-args:R :session causalimpact
+#+property: header-args:R+ :exports both
+#+property: header-args:R+ :results silent
+
+* Bibliotecas utilizadas
+  #+begin_src R
+  library(dplyr)   # %>%, mutate, filter
+  library(tidyr)   # pivot_longer
+  library(readr)   # read_delim, write_delim
+  #+end_src
+
+  
+* Leitura das séries temporais
+  #+begin_src R
+  orig <-
+    readr::read_delim(
+             file = '../data/xsmort.csv',
+             delim = ';'
+           )
+  #+end_src
+
+* Restringe a série para o período 2010-2023
+  #+begin_src R
+  mt <- orig %>%
+    group_by( causa, mes ) %>%
+    summarise( n = sum(mortes)) %>%
+    pivot_wider(
+      id_cols = mes,
+      names_from = causa,
+      values_from = n
+    ) %>%
+    filter( mes >= '2010-01-01') %>%
+    as.data.frame()
+
+  mt[is.na(mt)] <- 0
+  #+end_src
+
+* Inferência Causal
+  #+begin_src R
+  ## https://google.github.io/CausalImpact/CausalImpact.html
+  library(CausalImpact) # impact
+  library(ggplot2)      # labs
+
+  ## janela de tempo da análise
+  time.points <- seq.Date(
+    from = as.Date("2010-01-01"),
+    to = as.Date("2023-12-01"),
+    by = "1 month"
+  )
+
+  ## marcador de início do período de COVID-19
+  pre.period <- as.Date(c("2010-01-01", "2019-12-01"))
+  post.period <- as.Date(c("2020-01-01", "2023-12-01"))
+
+  ## Inferência Causal
+  for(i in c(2:5,7:ncol(mt))){
+
+    ## variáveis auxiliares para anotação dos gráficos
+    causa <- names(mt)[i]
+    controle <- 'C91 Leucemia linfoide'
+
+    ## preparaçõ do time series data frame
+    data <- zoo(cbind(mt[,i], mt$Controle), time.points)
+
+    ## análise causal
+    impact <- CausalImpact(data, pre.period, post.period)
+
+    ## análise causal gráfica
+    grafico <- plot(impact) +
+      labs(
+        title = "Excesso de mortes",
+        subtitle=paste0("Causa: ", causa, "\nControle: ", controle),
+        caption = "Fonte: TABNET/Campinas"
+      )
+
+    ## salva gráfico em disco
+    png(paste0('../imgs/plot_',i,'.png'), width = 700, height=400)
+    print(grafico)
+    dev.off()
+
+  }
+  #+end_src
