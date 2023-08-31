@@ -1,0 +1,375 @@
+#+title: Dados mensais de causa de morte selecionadas (TABNET/Campinas)
+#+author: Rafael Rodrigues de Moraes (ra009681, Doutorando em Demografia pelo IFCH/Unicamp)
+#+startup: inlineimages showall align hidestars
+#+property: header-args:R :session xsmort
+#+property: header-args:R+ :exports both
+#+property: header-args:R+ :results silent
+
+* Bibliotecas utilizadas
+  #+begin_src R
+  library(dplyr)   # %>%, mutate, filter
+  library(tidyr)   # pivot_longer
+  library(rvest)   # html_element, html_node, read_tml
+  library(httr)    # POST, content
+  library(readr)   # read_delim, write_delim
+  library(stringr) # str_replace
+  lirbary(glue)    # glue
+  #+end_src
+  
+* Causas de Morte (CID10)
+** Tabela com as causas de morte selecionadas para a análise
+   #+name: causas
+   | value | label                                              | causa                                                                        |
+   |-------+----------------------------------------------------+------------------------------------------------------------------------------|
+   |  2040 | U04   Síndrome respiratória aguda grave [SARS]     | SARS                                                                         |
+   |   715 | J09   Influenza dev virus gripe aviária            | Influenza [gripe]                                                            |
+   |   716 | J10   Influenza dev outro virus influenza ident    | Influenza [gripe]                                                            |
+   |   717 | J11   Influenza dev virus nao identificado         | Influenza [gripe]                                                            |
+   |   644 | I20   Angina pectoris                              | Outras doenças isquêmicas do coração                                         |
+   |   647 | I23   Alg complic atuais subs infarto agud miocard | Outras doenças isquêmicas do coração                                         |
+   |   648 | I24   Outr doenc isquemicas agudas do coracao      | Outras doenças isquêmicas do coração                                         |
+   |   649 | I25   Doenc isquemica cronica do coracao           | Outras doenças isquêmicas do coração                                         |
+   |   350 | E10   Diabetes mellitus insulino-dependente        | Diabetes melitus                                                             |
+   |   351 | E11   Diabetes mellitus nao-insulino-dependemte    | Diabetes melitus                                                             |
+   |   352 | E12   Diabetes mellitus relac c/a desnutr          | Diabetes melitus                                                             |
+   |   352 | E13   Outr tipos espec de diabetes mellitus        | Diabetes melitus                                                             |
+   |   354 | E14   Diabetes mellitus NE                         | Diabetes melitus                                                             |
+   |   393 | E66   Obesidade                                    | Obesidade                                                                    |
+   |   743 | J45   Asma                                         | Asma                                                                         |
+   |   744 | J46   Estado de mal asmatico                       | Asma                                                                         |
+   |   738 | J40   Bronquite NE como aguda ou cronica           | Bronquite, enfisema e outras doenças pulmonares obstrutivas crônicas (DPOC)  |
+   |   739 | J41   Bronquite cronica simples e a mucopurulenta  | Bronquite, enfisema e outras doenças pulmonares obstrutivas crônicas (DPOC)  |
+   |   740 | J42   Bronquite cronica NE                         | Bronquite, enfisema e outras doenças pulmonares obstrutivas crônicas (DPOC)  |
+   |   741 | J43   Enfisema                                     | Bronquite, enfisema e outras doenças pulmonares obstrutivas crônicas (DPOC)  |
+   |   742 | J44   Outr doenc pulmonares obstrutivas cronicas   | Bronquite, enfisema e outras doenças pulmonares obstrutivas crônicas (DPOC)  |
+   |   322 | D65   Coagulacao intravascular disseminada         | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
+   |   323 | D66   Defic hereditaria do fator VIII              | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
+   |   324 | D67   Defic hereditaria do fator IX                | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
+   |   325 | D68   Outr defeitos da coagulacao                  | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
+   |   326 | D69   Purpura e outr afeccoes hemorragicas         | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
+   |   327 | D70   Agranulocitose                               | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
+   |   328 | D71   Transt func neutrofilos polimorfonucleares   | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
+   |   329 | D72   Outr transt dos globulos brancos             | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
+   |   330 | D73   Doenc do baco                                | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
+   |   331 | D74   Metemoglobinemia                             | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
+   |   332 | D75   Outr doenc sangue e orgaos hematopoeticos    | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
+   |   333 | D76   Alg doenc q env tec linforr e sist reticuloh | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
+   |   334 | D77   Outr transt sangue e org hematop doenc COP   | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
+   |   503 | G10   Doenc de Huntington                          | Outras doenças do sistema nervoso                                            |
+   |   504 | G11   Ataxia hereditaria                           | Outras doenças do sistema nervoso                                            |
+   |   505 | G12   Atrofia muscular espinal e sindr correlatas  | Outras doenças do sistema nervoso                                            |
+   |   506 | G13   Atrof sist q afet sist nerv centr doen COP   | Outras doenças do sistema nervoso                                            |
+   |   508 | G21   Parkinsonismo secund                         | Outras doenças do sistema nervoso                                            |
+   |   509 | G22   Parkinsonismo em doenc COP                   | Outras doenças do sistema nervoso                                            |
+   |   510 | G23   Outr doenc degenerativas dos ganglios base   | Outras doenças do sistema nervoso                                            |
+   |   511 | G24   Distonia                                     | Outras doenças do sistema nervoso                                            |
+   |   512 | G25   Outr doenc extrapiramidais transt movimentos | Outras doenças do sistema nervoso                                            |
+   |   513 | G26   Doenc extrapiramidais transt movim doenc COP | Outras doenças do sistema nervoso                                            |
+   |   515 | G31   Outr doenc degenerativas sist nervoso NCOP   | Outras doenças do sistema nervoso                                            |
+   |   516 | G32   Outr transt degenerativ sist nerv doenc COP  | Outras doenças do sistema nervoso                                            |
+   |   518 | G36   Outr desmielinizacoes disseminadas agudas    | Outras doenças do sistema nervoso                                            |
+   |   519 | G37   Outr doenc desmielinizantes sist nerv centr  | Outras doenças do sistema nervoso                                            |
+   |   525 | G46   Sindr vasc cerebr q ocorr doenc cerebrovasc  | Outras doenças do sistema nervoso                                            |
+   |   526 | G47   Disturbios do sono                           | Outras doenças do sistema nervoso                                            |
+   |   537 | G60   Neuropatia hereditaria e idiopatica          | Outras doenças do sistema nervoso                                            |
+   |   538 | G61   Polineuropatia inflam                        | Outras doenças do sistema nervoso                                            |
+   |   539 | G62   Outr polineuropatias                         | Outras doenças do sistema nervoso                                            |
+   |   540 | G63   Polineuropatia em doenc COP                  | Outras doenças do sistema nervoso                                            |
+   |   541 | G64   Outr transt do sist nervoso periferico       | Outras doenças do sistema nervoso                                            |
+   |   542 | G70   Miastenia gravis outr transt neuromusculares | Outras doenças do sistema nervoso                                            |
+   |   543 | G71   Transt prim dos musculos                     | Outras doenças do sistema nervoso                                            |
+   |   544 | G72   Outr miopatias                               | Outras doenças do sistema nervoso                                            |
+   |   545 | G73   Transt juncao mioneural musculos doenc COP   | Outras doenças do sistema nervoso                                            |
+   |   550 | G90   Transt do sist nervoso autonomo              | Outras doenças do sistema nervoso                                            |
+   |   551 | G91   Hidrocefalia                                 | Outras doenças do sistema nervoso                                            |
+   |   552 | G92   Encefalopatia toxica                         | Outras doenças do sistema nervoso                                            |
+   |   553 | G93   Outr transt do encefalo                      | Outras doenças do sistema nervoso                                            |
+   |   554 | G94   Outr transt do encefalo em doenc COP         | Outras doenças do sistema nervoso                                            |
+   |   555 | G95   Outr doenc da medula espinal                 | Outras doenças do sistema nervoso                                            |
+   |   556 | G96   Outr transt do sist nervoso central          | Outras doenças do sistema nervoso                                            |
+   |   557 | G97   Transt pos-proced do sist nervoso NCOP       | Outras doenças do sistema nervoso                                            |
+   |   558 | G98   Outr transt do sist nervoso NCOP             | Outras doenças do sistema nervoso                                            |
+   |   559 | G99   Outr transt do sist nervoso em doenc COP     | Outras doenças do sistema nervoso                                            |
+   |  1010 | N17   Insuf renal aguda                            | Insuficiência renal                                                          |
+   |  1011 | N18   Insuf renal cronica                          | Insuficiência renal                                                          |
+   |  1012 | N19   Insuf renal NE                               | Insuficiência renal                                                          |
+   |   335 | D80   Imunodefic c/predom defeitos anticorpos      | Alguns transtornos envolvendo o mecanismo imunitário                         |
+   |   336 | D81   Defic imunitarias combinadas                 | Alguns transtornos envolvendo o mecanismo imunitário                         |
+   |   337 | D82   Imunodeficiencia assoc c/outr defeitos major | Alguns transtornos envolvendo o mecanismo imunitário                         |
+   |   338 | D83   Imunodeficiencia comum variavel              | Alguns transtornos envolvendo o mecanismo imunitário                         |
+   |   339 | D84   Outr imunodeficiencias                       | Alguns transtornos envolvendo o mecanismo imunitário                         |
+   |   340 | D86   Sarcoidose                                   | Alguns transtornos envolvendo o mecanismo imunitário                         |
+   |   341 | D89   Outr transt q comprom mecanismo imunit NCOP  | Alguns transtornos envolvendo o mecanismo imunitário                         |
+   |   322 | D65   Coagulacao intravascular disseminada         | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
+   |   323 | D66   Defic hereditaria do fator VIII              | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
+   |   324 | D67   Defic hereditaria do fator IX                | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
+   |   325 | D68   Outr defeitos da coagulacao                  | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
+   |   326 | D69   Purpura e outr afeccoes hemorragicas         | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
+   |   327 | D70   Agranulocitose                               | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
+   |   328 | D71   Transt func neutrofilos polimorfonucleares   | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
+   |   329 | D72   Outr transt dos globulos brancos             | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
+   |   330 | D73   Doenc do baco                                | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
+   |   331 | D74   Metemoglobinemia                             | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
+   |   332 | D75   Outr doenc sangue e orgaos hematopoeticos    | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
+   |   333 | D76   Alg doenc q env tec linforr e sist reticuloh | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
+   |   334 | D77   Outr transt sangue e org hematop doenc COP   | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
+   |   694 | I80   Flebite e tromboflebite                      | Flebite, tromboflebite, embolia e trombose venosa                            |
+   |   695 | I81   Trombose da veia porta                       | Flebite, tromboflebite, embolia e trombose venosa                            |
+   |   696 | I82   Outr embolia e trombose venosas              | Flebite, tromboflebite, embolia e trombose venosa                            |
+** Salva tabela com causas de morte em disco
+   #+begin_src R :var df_causas=causas
+   readr::write_delim(
+            x = df_causas,
+            file = '../raw/causas.csv',
+            delim = ';'
+          )
+   #+end_src
+   
+** leitura da tabela em um data frame para uso no R
+   #+begin_src R 
+   causas <-
+     readr::read_delim(
+              file = '../raw/causas.csv',
+              delim = ';'
+            )
+   #+end_src
+
+* Requisição POST ao TABNET/Campinas
+** Lista de parâmetros
+   #+name: params
+   | tipo      | parametro                                       |
+   |-----------+-------------------------------------------------|
+   | fixo      | Linha=Ano_do_%D3bito                            |
+   | fixo      | Coluna=Mes_do_%D3bito                           |
+   | fixo      | Incremento=Resid_Campinas                       |
+   | fixo      | Arquivos=do23.dbf                               |
+   | fixo      | Arquivos=do22.dbf                               |
+   | fixo      | Arquivos=do21.dbf                               |
+   | fixo      | Arquivos=do20.dbf                               |
+   | fixo      | Arquivos=do19.dbf                               |
+   | fixo      | Arquivos=do18.dbf                               |
+   | fixo      | Arquivos=do17.dbf                               |
+   | fixo      | Arquivos=do16.dbf                               |
+   | fixo      | Arquivos=do15.dbf                               |
+   | fixo      | Arquivos=do14.dbf                               |
+   | fixo      | Arquivos=do13.dbf                               |
+   | fixo      | Arquivos=do12.dbf                               |
+   | fixo      | Arquivos=do11.dbf                               |
+   | fixo      | Arquivos=do10.dbf                               |
+   | fixo      | Arquivos=do09.dbf                               |
+   | fixo      | Arquivos=do08.dbf                               |
+   | fixo      | Arquivos=do07.dbf                               |
+   | fixo      | Arquivos=do06.dbf                               |
+   | fixo      | Arquivos=do05.dbf                               |
+   | fixo      | Arquivos=do04.dbf                               |
+   | fixo      | Arquivos=do03.dbf                               |
+   | fixo      | Arquivos=do02.dbf                               |
+   | fixo      | Arquivos=do01.dbf                               |
+   | fixo      | Arquivos=do00.dbf                               |
+   | variáveis | SSexo=1                                         |
+   | variáveis | SCausa_%28CID10_3C%29=743                       |
+   | variáveis | SCausa_%28CID10_3C%29=744                       |
+   | default   | SMes_do_%D3bito=TODAS_AS_CATEGORIAS__           |
+   | default   | SOcorr_Outro_Mun=TODAS_AS_CATEGORIAS__          |
+   | default   | SMunic_Ocor_BR=TODAS_AS_CATEGORIAS__            |
+   | default   | SMunic_Ocor_SP=TODAS_AS_CATEGORIAS__            |
+   | default   | SLocal_Ocorr%EAncia=TODAS_AS_CATEGORIAS__       |
+   | default   | SEstab_Ocorr=TODAS_AS_CATEGORIAS__              |
+   | default   | SUF_Resid=TODAS_AS_CATEGORIAS__                 |
+   | default   | SMunic_Resid_BR=TODAS_AS_CATEGORIAS__           |
+   | default   | SMunic_Resid_SP=TODAS_AS_CATEGORIAS__           |
+   | default   | SDist_Resid_Camp=TODAS_AS_CATEGORIAS__          |
+   | default   | SCS_Resid_Camp=TODAS_AS_CATEGORIAS__            |
+   | default   | SFaixa_Et%E1ria_%285-5%29=TODAS_AS_CATEGORIAS__ |
+   | default   | SFaixa_Et%E1ria_%2813%29=TODAS_AS_CATEGORIAS__  |
+   | default   | SFaixa_Et%E1ria_%3C1ano=TODAS_AS_CATEGORIAS__   |
+   | default   | SIdade_Detalhada=TODAS_AS_CATEGORIAS__          |
+   | default   | SIdade_Detal_%3C1ano=TODAS_AS_CATEGORIAS__      |
+   | default   | SRa%E7a%2FCor=TODAS_AS_CATEGORIAS__             |
+   | default   | SCausa_%28Cap_CID10%29=TODAS_AS_CATEGORIAS__    |
+   | default   | SCausa_%28CID10_BR%29=TODAS_AS_CATEGORIAS__     |
+   | default   | SMaternas=TODAS_AS_CATEGORIAS__                 |
+   | default   | SNot_Compuls%F3ria=TODAS_AS_CATEGORIAS__        |
+   | default   | SD_Isquem_Cora%E7%E3o=TODAS_AS_CATEGORIAS__     |
+   | default   | SNeoplasias=TODAS_AS_CATEGORIAS__               |
+   | default   | STipo_de_Violencia=TODAS_AS_CATEGORIAS__        |
+   | default   | SAcid_Transporte=TODAS_AS_CATEGORIAS__          |
+   | default   | SHomic%EDdios=TODAS_AS_CATEGORIAS__             |
+   | default   | SSuic%EDdios=TODAS_AS_CATEGORIAS__              |
+   | default   | SEvitaveis_%3C5A=TODAS_AS_CATEGORIAS__          |
+   | formato   | formato=prn                                     |
+   | formato   | mostre=Mostra                                   |
+
+** Salva lista de parâmetros em disco
+   #+begin_src R :var df_params=params
+   readr::write_delim(
+            x = df_params,
+            file = '../raw/tabnet_campinas_POST_params.csv',
+            delim = ';'
+          )
+   #+end_src
+
+** leitura dos parâmetros da requisição POST em um data frame para uso no R
+   #+begin_src R
+   qry_params <-
+     readr::read_delim(
+            file = '../raw/tabnet_campinas_POST_params.csv',
+            delim = ';'
+          )
+   #+end_src
+
+** Composição da string de consulta ao tabnet   
+*** Parâmetros fixos
+    #+begin_src R 
+    ## Fixos
+    qry_fixo <- paste(
+      subset(qry_params, tipo=='fixo')$parametro,
+      collapse="&"
+    )
+
+    ## Formato
+    qry_formato <- paste(
+      subset(qry_params, tipo=='formato')$parametro,
+      collapse="&"
+    )
+
+    ## Default
+    qry_default <- paste(
+      subset(qry_params, tipo=='default')$parametro,
+      collapse="&"
+    )
+    #+end_src
+
+*** Construção da query de requisição POST usando parâmetros variáveis e fixos
+    #+begin_src R 
+    ## Construção da query de requisição
+
+    ## flag de controle para salvar resultados em disco
+    append_flag <- FALSE
+
+    ## para ambos os sexos (masculino 1 e feminino 2)
+    for(arg_sexo in c(1,2)){
+
+      qry_sexo <- paste('SSexo=', arg_sexo, sep='')
+
+      ## para cada grupo de causas de morte
+      for(arg_causa in unique(causas$causa)){
+
+        qry_causa <- paste(
+          'SCausa_(CID10_3C)=',
+          subset(causas, causa==arg_causa)$value,
+          collapse="&",
+          sep=''
+        )
+
+        ## query de requisição POST ao TABNET/Campinas
+        raw <- paste(
+          qry_fixo,    '&',
+          qry_default, '&',
+          qry_sexo,    '&',
+          qry_causa,   '&',
+          qry_formato, 
+          sep=''
+        )
+
+        ## log de progresso da operação
+        print(glue::glue('Sexo: {arg_sexo}'))
+        print(glue::glue('Causa: {arg_causa}'))
+        print('query final:')
+        print(raw)
+
+        ## URL TABNET/Campinas
+        url <- 'http://tabnet.campinas.sp.gov.br/tabnet?sim/sim.def'
+
+        ## requisição POST
+        req <- httr::POST(
+                       url,
+                       body=raw,
+                       encode="raw",
+                       verbose()
+                     )
+
+        html <- httr::content(req, 'text', encoding = 'latin1')
+
+        if( read_html(html) %>% html_node("pre") %>% is.na() == TRUE ) {
+          ## requisição não forneceu resultados 
+          ## ==> tabela inexistente
+          ## ==> portanto vai para o próximo grupo de causas
+          next
+        } else {
+          aux <- 
+            read_html(html) %>%
+            html_node("pre") %>%
+            html_text() %>%
+            stringr::str_sub(., end=-3) %>%
+            read.table(text=., header=TRUE, sep=";") %>%
+            rename("ano" = 1) %>%
+            tidyr::pivot_longer(cols=-1, names_to = "mes", values_to = "mortes") %>%
+            filter(ano != "Total") %>% 
+            filter(mes != "Total") %>%
+            transmute(
+              mes = case_when(
+                mes == 'Janeiro'   ~ paste0(ano,'-01-01'),
+                mes == 'Fevereiro' ~ paste0(ano,'-02-01'),
+                mes == 'Março'     ~ paste0(ano,'-03-01'),
+                mes == 'Abril'     ~ paste0(ano,'-04-01'),
+                mes == 'Maio'      ~ paste0(ano,'-05-01'),
+                mes == 'Junho'     ~ paste0(ano,'-06-01'),
+                mes == 'Julho'     ~ paste0(ano,'-07-01'),
+                mes == 'Agosto'    ~ paste0(ano,'-08-01'),
+                mes == 'Setembro'  ~ paste0(ano,'-09-01'),
+                mes == 'Outubro'   ~ paste0(ano,'-10-01'),
+                mes == 'Novembro'  ~ paste0(ano,'-11-01'),
+                mes == 'Dezembro'  ~ paste0(ano,'-12-01')
+              ),
+              mortes,
+              sexo = ifelse( arg_sexo == 1, 'masculino', 'feminino'),
+              causa = arg_causa
+            )
+
+          write_delim(
+            aux,
+            file = '../data/xsmort.csv',
+            delim = ';',
+            append = append_flag
+          )
+
+          append_flag <- TRUE
+      
+        } # ELSE-IF read_html(html) %>% html_node("pre") %>% is.na() == TRUE
+
+      } # FOR-LOOP arg_causa
+
+    } # FOR-LOOP arg_sexo
+    #+end_src
+
+* (Single-cell) exemplo de requisição POST ao TABNET Campinas
+
+  #+begin_src R :eval no
+  url <- 'http://tabnet.campinas.sp.gov.br/tabnet?sim/sim.def'
+
+  raw <- "Linha=Ano_do_%D3bito&Coluna=Mes_do_%D3bito&Incremento=Resid_Campinas&Arquivos=do22.dbf&Arquivos=do21.dbf&Arquivos=do20.dbf&Arquivos=do19.dbf&Arquivos=do18.dbf&Arquivos=do17.dbf&Arquivos=do16.dbf&Arquivos=do15.dbf&Arquivos=do14.dbf&Arquivos=do13.dbf&Arquivos=do12.dbf&Arquivos=do11.dbf&Arquivos=do10.dbf&SMes_do_%D3bito=TODAS_AS_CATEGORIAS__&SOcorr_Outro_Mun=TODAS_AS_CATEGORIAS__&SMunic_Ocor_BR=TODAS_AS_CATEGORIAS__&SMunic_Ocor_SP=TODAS_AS_CATEGORIAS__&SLocal_Ocorr%EAncia=TODAS_AS_CATEGORIAS__&SEstab_Ocorr=TODAS_AS_CATEGORIAS__&SUF_Resid=TODAS_AS_CATEGORIAS__&SMunic_Resid_BR=TODAS_AS_CATEGORIAS__&SMunic_Resid_SP=TODAS_AS_CATEGORIAS__&SDist_Resid_Camp=TODAS_AS_CATEGORIAS__&SCS_Resid_Camp=TODAS_AS_CATEGORIAS__&SSexo=1&SFaixa_Et%E1ria_%285-5%29=TODAS_AS_CATEGORIAS__&SFaixa_Et%E1ria_%2813%29=TODAS_AS_CATEGORIAS__&SFaixa_Et%E1ria_%3C1ano=TODAS_AS_CATEGORIAS__&SIdade_Detalhada=TODAS_AS_CATEGORIAS__&SIdade_Detal_%3C1ano=TODAS_AS_CATEGORIAS__&SRa%E7a%2FCor=TODAS_AS_CATEGORIAS__&SCausa_%28Cap_CID10%29=TODAS_AS_CATEGORIAS__&SCausa_%28CID10_3C%29=350&SCausa_%28CID10_3C%29=351&SCausa_%28CID10_3C%29=352&SCausa_%28CID10_3C%29=353&SCausa_%28CID10_3C%29=354&SCausa_%28CID10_BR%29=TODAS_AS_CATEGORIAS__&SMaternas=TODAS_AS_CATEGORIAS__&SNot_Compuls%F3ria=TODAS_AS_CATEGORIAS__&SD_Isquem_Cora%E7%E3o=TODAS_AS_CATEGORIAS__&SNeoplasias=TODAS_AS_CATEGORIAS__&STipo_de_Violencia=TODAS_AS_CATEGORIAS__&SAcid_Transporte=TODAS_AS_CATEGORIAS__&SHomic%EDdios=TODAS_AS_CATEGORIAS__&SSuic%EDdios=TODAS_AS_CATEGORIAS__&SEvitaveis_%3C5A=TODAS_AS_CATEGORIAS__&formato=prn&mostre=Mostra"
+
+  req <- httr::POST(
+    url,
+    body=raw,
+    encode="raw",
+    verbose()
+  )
+
+  html <- httr::content(req, 'text', encoding = 'latin1')
+
+  read_html(html) %>%
+    html_node("pre") %>%
+    html_text() %>%
+    stringr::str_sub(., end=-3) %>%              # ignora os 3 últimos caracteres: \n&\n
+    read.table(text=., header=TRUE, sep=";") %>% # transforma string em data frame
+    rename("ano" = 1) %>%
+    tidyr::pivot_longer(cols=-1) %>%             # pivoteia tabela para o formato longo
+    filter(ano != "Total") %>% 
+    filter(name != "Total") %>%
+    View
+
+  #+end_src
+  
+
