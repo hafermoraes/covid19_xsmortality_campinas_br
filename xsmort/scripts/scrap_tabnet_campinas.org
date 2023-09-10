@@ -13,114 +13,123 @@
   library(httr)    # POST, content
   library(readr)   # read_delim, write_delim
   library(stringr) # str_replace
-  lirbary(glue)    # glue
+  library(glue)    # glue
   #+end_src
   
 * Causas de Morte (CID10)
 ** Tabela com as causas de morte selecionadas para a análise
+   #+name: causa_id
+   | id | causa                                                                        |
+   |----+------------------------------------------------------------------------------|
+   |  1 | SARS                                                                         |
+   |  2 | Influenza [gripe]                                                            |
+   |  3 | Outras doenças isquêmicas do coração                                         |
+   |  4 | Diabetes melitus                                                             |
+   |  5 | Obesidade                                                                    |
+   |  6 | Asma                                                                         |
+   |  7 | Bronquite, enfisema e outras doenças pulmonares obstrutivas crônicas (DPOC)  |
+   |  8 | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
+   |  9 | Outras doenças do sistema nervoso                                            |
+   | 10 | Insuficiência renal                                                          |
+   | 11 | Alguns transtornos envolvendo o mecanismo imunitário                         |
+   | 12 | Flebite, tromboflebite, embolia e trombose venosa                            |
+   
    #+name: causas
-   | value | label                                              | causa                                                                        |
-   |-------+----------------------------------------------------+------------------------------------------------------------------------------|
-   |  2040 | U04   Síndrome respiratória aguda grave [SARS]     | SARS                                                                         |
-   |   715 | J09   Influenza dev virus gripe aviária            | Influenza [gripe]                                                            |
-   |   716 | J10   Influenza dev outro virus influenza ident    | Influenza [gripe]                                                            |
-   |   717 | J11   Influenza dev virus nao identificado         | Influenza [gripe]                                                            |
-   |   644 | I20   Angina pectoris                              | Outras doenças isquêmicas do coração                                         |
-   |   647 | I23   Alg complic atuais subs infarto agud miocard | Outras doenças isquêmicas do coração                                         |
-   |   648 | I24   Outr doenc isquemicas agudas do coracao      | Outras doenças isquêmicas do coração                                         |
-   |   649 | I25   Doenc isquemica cronica do coracao           | Outras doenças isquêmicas do coração                                         |
-   |   350 | E10   Diabetes mellitus insulino-dependente        | Diabetes melitus                                                             |
-   |   351 | E11   Diabetes mellitus nao-insulino-dependemte    | Diabetes melitus                                                             |
-   |   352 | E12   Diabetes mellitus relac c/a desnutr          | Diabetes melitus                                                             |
-   |   352 | E13   Outr tipos espec de diabetes mellitus        | Diabetes melitus                                                             |
-   |   354 | E14   Diabetes mellitus NE                         | Diabetes melitus                                                             |
-   |   393 | E66   Obesidade                                    | Obesidade                                                                    |
-   |   743 | J45   Asma                                         | Asma                                                                         |
-   |   744 | J46   Estado de mal asmatico                       | Asma                                                                         |
-   |   738 | J40   Bronquite NE como aguda ou cronica           | Bronquite, enfisema e outras doenças pulmonares obstrutivas crônicas (DPOC)  |
-   |   739 | J41   Bronquite cronica simples e a mucopurulenta  | Bronquite, enfisema e outras doenças pulmonares obstrutivas crônicas (DPOC)  |
-   |   740 | J42   Bronquite cronica NE                         | Bronquite, enfisema e outras doenças pulmonares obstrutivas crônicas (DPOC)  |
-   |   741 | J43   Enfisema                                     | Bronquite, enfisema e outras doenças pulmonares obstrutivas crônicas (DPOC)  |
-   |   742 | J44   Outr doenc pulmonares obstrutivas cronicas   | Bronquite, enfisema e outras doenças pulmonares obstrutivas crônicas (DPOC)  |
-   |   322 | D65   Coagulacao intravascular disseminada         | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
-   |   323 | D66   Defic hereditaria do fator VIII              | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
-   |   324 | D67   Defic hereditaria do fator IX                | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
-   |   325 | D68   Outr defeitos da coagulacao                  | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
-   |   326 | D69   Purpura e outr afeccoes hemorragicas         | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
-   |   327 | D70   Agranulocitose                               | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
-   |   328 | D71   Transt func neutrofilos polimorfonucleares   | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
-   |   329 | D72   Outr transt dos globulos brancos             | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
-   |   330 | D73   Doenc do baco                                | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
-   |   331 | D74   Metemoglobinemia                             | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
-   |   332 | D75   Outr doenc sangue e orgaos hematopoeticos    | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
-   |   333 | D76   Alg doenc q env tec linforr e sist reticuloh | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
-   |   334 | D77   Outr transt sangue e org hematop doenc COP   | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
-   |   503 | G10   Doenc de Huntington                          | Outras doenças do sistema nervoso                                            |
-   |   504 | G11   Ataxia hereditaria                           | Outras doenças do sistema nervoso                                            |
-   |   505 | G12   Atrofia muscular espinal e sindr correlatas  | Outras doenças do sistema nervoso                                            |
-   |   506 | G13   Atrof sist q afet sist nerv centr doen COP   | Outras doenças do sistema nervoso                                            |
-   |   508 | G21   Parkinsonismo secund                         | Outras doenças do sistema nervoso                                            |
-   |   509 | G22   Parkinsonismo em doenc COP                   | Outras doenças do sistema nervoso                                            |
-   |   510 | G23   Outr doenc degenerativas dos ganglios base   | Outras doenças do sistema nervoso                                            |
-   |   511 | G24   Distonia                                     | Outras doenças do sistema nervoso                                            |
-   |   512 | G25   Outr doenc extrapiramidais transt movimentos | Outras doenças do sistema nervoso                                            |
-   |   513 | G26   Doenc extrapiramidais transt movim doenc COP | Outras doenças do sistema nervoso                                            |
-   |   515 | G31   Outr doenc degenerativas sist nervoso NCOP   | Outras doenças do sistema nervoso                                            |
-   |   516 | G32   Outr transt degenerativ sist nerv doenc COP  | Outras doenças do sistema nervoso                                            |
-   |   518 | G36   Outr desmielinizacoes disseminadas agudas    | Outras doenças do sistema nervoso                                            |
-   |   519 | G37   Outr doenc desmielinizantes sist nerv centr  | Outras doenças do sistema nervoso                                            |
-   |   525 | G46   Sindr vasc cerebr q ocorr doenc cerebrovasc  | Outras doenças do sistema nervoso                                            |
-   |   526 | G47   Disturbios do sono                           | Outras doenças do sistema nervoso                                            |
-   |   537 | G60   Neuropatia hereditaria e idiopatica          | Outras doenças do sistema nervoso                                            |
-   |   538 | G61   Polineuropatia inflam                        | Outras doenças do sistema nervoso                                            |
-   |   539 | G62   Outr polineuropatias                         | Outras doenças do sistema nervoso                                            |
-   |   540 | G63   Polineuropatia em doenc COP                  | Outras doenças do sistema nervoso                                            |
-   |   541 | G64   Outr transt do sist nervoso periferico       | Outras doenças do sistema nervoso                                            |
-   |   542 | G70   Miastenia gravis outr transt neuromusculares | Outras doenças do sistema nervoso                                            |
-   |   543 | G71   Transt prim dos musculos                     | Outras doenças do sistema nervoso                                            |
-   |   544 | G72   Outr miopatias                               | Outras doenças do sistema nervoso                                            |
-   |   545 | G73   Transt juncao mioneural musculos doenc COP   | Outras doenças do sistema nervoso                                            |
-   |   550 | G90   Transt do sist nervoso autonomo              | Outras doenças do sistema nervoso                                            |
-   |   551 | G91   Hidrocefalia                                 | Outras doenças do sistema nervoso                                            |
-   |   552 | G92   Encefalopatia toxica                         | Outras doenças do sistema nervoso                                            |
-   |   553 | G93   Outr transt do encefalo                      | Outras doenças do sistema nervoso                                            |
-   |   554 | G94   Outr transt do encefalo em doenc COP         | Outras doenças do sistema nervoso                                            |
-   |   555 | G95   Outr doenc da medula espinal                 | Outras doenças do sistema nervoso                                            |
-   |   556 | G96   Outr transt do sist nervoso central          | Outras doenças do sistema nervoso                                            |
-   |   557 | G97   Transt pos-proced do sist nervoso NCOP       | Outras doenças do sistema nervoso                                            |
-   |   558 | G98   Outr transt do sist nervoso NCOP             | Outras doenças do sistema nervoso                                            |
-   |   559 | G99   Outr transt do sist nervoso em doenc COP     | Outras doenças do sistema nervoso                                            |
-   |  1010 | N17   Insuf renal aguda                            | Insuficiência renal                                                          |
-   |  1011 | N18   Insuf renal cronica                          | Insuficiência renal                                                          |
-   |  1012 | N19   Insuf renal NE                               | Insuficiência renal                                                          |
-   |   335 | D80   Imunodefic c/predom defeitos anticorpos      | Alguns transtornos envolvendo o mecanismo imunitário                         |
-   |   336 | D81   Defic imunitarias combinadas                 | Alguns transtornos envolvendo o mecanismo imunitário                         |
-   |   337 | D82   Imunodeficiencia assoc c/outr defeitos major | Alguns transtornos envolvendo o mecanismo imunitário                         |
-   |   338 | D83   Imunodeficiencia comum variavel              | Alguns transtornos envolvendo o mecanismo imunitário                         |
-   |   339 | D84   Outr imunodeficiencias                       | Alguns transtornos envolvendo o mecanismo imunitário                         |
-   |   340 | D86   Sarcoidose                                   | Alguns transtornos envolvendo o mecanismo imunitário                         |
-   |   341 | D89   Outr transt q comprom mecanismo imunit NCOP  | Alguns transtornos envolvendo o mecanismo imunitário                         |
-   |   322 | D65   Coagulacao intravascular disseminada         | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
-   |   323 | D66   Defic hereditaria do fator VIII              | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
-   |   324 | D67   Defic hereditaria do fator IX                | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
-   |   325 | D68   Outr defeitos da coagulacao                  | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
-   |   326 | D69   Purpura e outr afeccoes hemorragicas         | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
-   |   327 | D70   Agranulocitose                               | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
-   |   328 | D71   Transt func neutrofilos polimorfonucleares   | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
-   |   329 | D72   Outr transt dos globulos brancos             | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
-   |   330 | D73   Doenc do baco                                | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
-   |   331 | D74   Metemoglobinemia                             | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
-   |   332 | D75   Outr doenc sangue e orgaos hematopoeticos    | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
-   |   333 | D76   Alg doenc q env tec linforr e sist reticuloh | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
-   |   334 | D77   Outr transt sangue e org hematop doenc COP   | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |
-   |   694 | I80   Flebite e tromboflebite                      | Flebite, tromboflebite, embolia e trombose venosa                            |
-   |   695 | I81   Trombose da veia porta                       | Flebite, tromboflebite, embolia e trombose venosa                            |
-   |   696 | I82   Outr embolia e trombose venosas              | Flebite, tromboflebite, embolia e trombose venosa                            |
+   | value | label                                              | causa                                                                        | causa_id |
+   |-------+----------------------------------------------------+------------------------------------------------------------------------------+----------|
+   |  2040 | U04   Síndrome respiratória aguda grave [SARS]     | SARS                                                                         |        1 |
+   |   715 | J09   Influenza dev virus gripe aviária            | Influenza [gripe]                                                            |        2 |
+   |   716 | J10   Influenza dev outro virus influenza ident    | Influenza [gripe]                                                            |        2 |
+   |   717 | J11   Influenza dev virus nao identificado         | Influenza [gripe]                                                            |        2 |
+   |   644 | I20   Angina pectoris                              | Outras doenças isquêmicas do coração                                         |        3 |
+   |   647 | I23   Alg complic atuais subs infarto agud miocard | Outras doenças isquêmicas do coração                                         |        3 |
+   |   648 | I24   Outr doenc isquemicas agudas do coracao      | Outras doenças isquêmicas do coração                                         |        3 |
+   |   649 | I25   Doenc isquemica cronica do coracao           | Outras doenças isquêmicas do coração                                         |        3 |
+   |   350 | E10   Diabetes mellitus insulino-dependente        | Diabetes melitus                                                             |        4 |
+   |   351 | E11   Diabetes mellitus nao-insulino-dependemte    | Diabetes melitus                                                             |        4 |
+   |   352 | E12   Diabetes mellitus relac c/a desnutr          | Diabetes melitus                                                             |        4 |
+   |   352 | E13   Outr tipos espec de diabetes mellitus        | Diabetes melitus                                                             |        4 |
+   |   354 | E14   Diabetes mellitus NE                         | Diabetes melitus                                                             |        4 |
+   |   393 | E66   Obesidade                                    | Obesidade                                                                    |        5 |
+   |   743 | J45   Asma                                         | Asma                                                                         |        6 |
+   |   744 | J46   Estado de mal asmatico                       | Asma                                                                         |        6 |
+   |   738 | J40   Bronquite NE como aguda ou cronica           | Bronquite, enfisema e outras doenças pulmonares obstrutivas crônicas (DPOC)  |        7 |
+   |   739 | J41   Bronquite cronica simples e a mucopurulenta  | Bronquite, enfisema e outras doenças pulmonares obstrutivas crônicas (DPOC)  |        7 |
+   |   740 | J42   Bronquite cronica NE                         | Bronquite, enfisema e outras doenças pulmonares obstrutivas crônicas (DPOC)  |        7 |
+   |   741 | J43   Enfisema                                     | Bronquite, enfisema e outras doenças pulmonares obstrutivas crônicas (DPOC)  |        7 |
+   |   742 | J44   Outr doenc pulmonares obstrutivas cronicas   | Bronquite, enfisema e outras doenças pulmonares obstrutivas crônicas (DPOC)  |        7 |
+   |   322 | D65   Coagulacao intravascular disseminada         | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |        8 |
+   |   323 | D66   Defic hereditaria do fator VIII              | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |        8 |
+   |   324 | D67   Defic hereditaria do fator IX                | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |        8 |
+   |   325 | D68   Outr defeitos da coagulacao                  | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |        8 |
+   |   326 | D69   Purpura e outr afeccoes hemorragicas         | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |        8 |
+   |   327 | D70   Agranulocitose                               | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |        8 |
+   |   328 | D71   Transt func neutrofilos polimorfonucleares   | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |        8 |
+   |   329 | D72   Outr transt dos globulos brancos             | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |        8 |
+   |   330 | D73   Doenc do baco                                | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |        8 |
+   |   331 | D74   Metemoglobinemia                             | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |        8 |
+   |   332 | D75   Outr doenc sangue e orgaos hematopoeticos    | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |        8 |
+   |   333 | D76   Alg doenc q env tec linforr e sist reticuloh | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |        8 |
+   |   334 | D77   Outr transt sangue e org hematop doenc COP   | Afecções hemorrágicas e outras doenças do sangue e dos órgãos hematopoéticos |        8 |
+   |   503 | G10   Doenc de Huntington                          | Outras doenças do sistema nervoso                                            |        9 |
+   |   504 | G11   Ataxia hereditaria                           | Outras doenças do sistema nervoso                                            |        9 |
+   |   505 | G12   Atrofia muscular espinal e sindr correlatas  | Outras doenças do sistema nervoso                                            |        9 |
+   |   506 | G13   Atrof sist q afet sist nerv centr doen COP   | Outras doenças do sistema nervoso                                            |        9 |
+   |   508 | G21   Parkinsonismo secund                         | Outras doenças do sistema nervoso                                            |        9 |
+   |   509 | G22   Parkinsonismo em doenc COP                   | Outras doenças do sistema nervoso                                            |        9 |
+   |   510 | G23   Outr doenc degenerativas dos ganglios base   | Outras doenças do sistema nervoso                                            |        9 |
+   |   511 | G24   Distonia                                     | Outras doenças do sistema nervoso                                            |        9 |
+   |   512 | G25   Outr doenc extrapiramidais transt movimentos | Outras doenças do sistema nervoso                                            |        9 |
+   |   513 | G26   Doenc extrapiramidais transt movim doenc COP | Outras doenças do sistema nervoso                                            |        9 |
+   |   515 | G31   Outr doenc degenerativas sist nervoso NCOP   | Outras doenças do sistema nervoso                                            |        9 |
+   |   516 | G32   Outr transt degenerativ sist nerv doenc COP  | Outras doenças do sistema nervoso                                            |        9 |
+   |   518 | G36   Outr desmielinizacoes disseminadas agudas    | Outras doenças do sistema nervoso                                            |        9 |
+   |   519 | G37   Outr doenc desmielinizantes sist nerv centr  | Outras doenças do sistema nervoso                                            |        9 |
+   |   525 | G46   Sindr vasc cerebr q ocorr doenc cerebrovasc  | Outras doenças do sistema nervoso                                            |        9 |
+   |   526 | G47   Disturbios do sono                           | Outras doenças do sistema nervoso                                            |        9 |
+   |   537 | G60   Neuropatia hereditaria e idiopatica          | Outras doenças do sistema nervoso                                            |        9 |
+   |   538 | G61   Polineuropatia inflam                        | Outras doenças do sistema nervoso                                            |        9 |
+   |   539 | G62   Outr polineuropatias                         | Outras doenças do sistema nervoso                                            |        9 |
+   |   540 | G63   Polineuropatia em doenc COP                  | Outras doenças do sistema nervoso                                            |        9 |
+   |   541 | G64   Outr transt do sist nervoso periferico       | Outras doenças do sistema nervoso                                            |        9 |
+   |   542 | G70   Miastenia gravis outr transt neuromusculares | Outras doenças do sistema nervoso                                            |        9 |
+   |   543 | G71   Transt prim dos musculos                     | Outras doenças do sistema nervoso                                            |        9 |
+   |   544 | G72   Outr miopatias                               | Outras doenças do sistema nervoso                                            |        9 |
+   |   545 | G73   Transt juncao mioneural musculos doenc COP   | Outras doenças do sistema nervoso                                            |        9 |
+   |   550 | G90   Transt do sist nervoso autonomo              | Outras doenças do sistema nervoso                                            |        9 |
+   |   551 | G91   Hidrocefalia                                 | Outras doenças do sistema nervoso                                            |        9 |
+   |   552 | G92   Encefalopatia toxica                         | Outras doenças do sistema nervoso                                            |        9 |
+   |   553 | G93   Outr transt do encefalo                      | Outras doenças do sistema nervoso                                            |        9 |
+   |   554 | G94   Outr transt do encefalo em doenc COP         | Outras doenças do sistema nervoso                                            |        9 |
+   |   555 | G95   Outr doenc da medula espinal                 | Outras doenças do sistema nervoso                                            |        9 |
+   |   556 | G96   Outr transt do sist nervoso central          | Outras doenças do sistema nervoso                                            |        9 |
+   |   557 | G97   Transt pos-proced do sist nervoso NCOP       | Outras doenças do sistema nervoso                                            |        9 |
+   |   558 | G98   Outr transt do sist nervoso NCOP             | Outras doenças do sistema nervoso                                            |        9 |
+   |   559 | G99   Outr transt do sist nervoso em doenc COP     | Outras doenças do sistema nervoso                                            |        9 |
+   |  1010 | N17   Insuf renal aguda                            | Insuficiência renal                                                          |       10 |
+   |  1011 | N18   Insuf renal cronica                          | Insuficiência renal                                                          |       10 |
+   |  1012 | N19   Insuf renal NE                               | Insuficiência renal                                                          |       10 |
+   |   335 | D80   Imunodefic c/predom defeitos anticorpos      | Alguns transtornos envolvendo o mecanismo imunitário                         |       11 |
+   |   336 | D81   Defic imunitarias combinadas                 | Alguns transtornos envolvendo o mecanismo imunitário                         |       11 |
+   |   337 | D82   Imunodeficiencia assoc c/outr defeitos major | Alguns transtornos envolvendo o mecanismo imunitário                         |       11 |
+   |   338 | D83   Imunodeficiencia comum variavel              | Alguns transtornos envolvendo o mecanismo imunitário                         |       11 |
+   |   339 | D84   Outr imunodeficiencias                       | Alguns transtornos envolvendo o mecanismo imunitário                         |       11 |
+   |   340 | D86   Sarcoidose                                   | Alguns transtornos envolvendo o mecanismo imunitário                         |       11 |
+   |   341 | D89   Outr transt q comprom mecanismo imunit NCOP  | Alguns transtornos envolvendo o mecanismo imunitário                         |       11 |
+   |   694 | I80   Flebite e tromboflebite                      | Flebite, tromboflebite, embolia e trombose venosa                            |       12 |
+   |   695 | I81   Trombose da veia porta                       | Flebite, tromboflebite, embolia e trombose venosa                            |       12 |
+   |   696 | I82   Outr embolia e trombose venosas              | Flebite, tromboflebite, embolia e trombose venosa                            |       12 |
+
 ** Salva tabela com causas de morte em disco
-   #+begin_src R :var df_causas=causas
+   #+begin_src R :var df_causas=causas causa_id=causa_id
    readr::write_delim(
             x = df_causas,
             file = '../raw/causas.csv',
+            delim = ';'
+          )
+   readr::write_delim(
+            x = causa_id,
+            file = '../raw/causa_id.csv',
             delim = ';'
           )
    #+end_src
@@ -130,6 +139,11 @@
    causas <-
      readr::read_delim(
               file = '../raw/causas.csv',
+              delim = ';'
+            )
+   causa_id <-
+     readr::read_delim(
+              file = '../raw/causa_id.csv',
               delim = ';'
             )
    #+end_src
@@ -255,6 +269,8 @@
       ## para cada grupo de causas de morte
       for(arg_causa in unique(causas$causa)){
 
+        id_causa <- subset( causa_id, causa == arg_causa)$id
+
         qry_causa <- paste(
           'SCausa_(CID10_3C)=',
           subset(causas, causa==arg_causa)$value,
@@ -324,7 +340,7 @@
               ),
               mortes,
               sexo = ifelse( arg_sexo == 1, 'masculino', 'feminino'),
-              causa = arg_causa
+              causa_id = id_causa
             )
 
           write_delim(
@@ -335,7 +351,7 @@
           )
 
           append_flag <- TRUE
-      
+
         } # ELSE-IF read_html(html) %>% html_node("pre") %>% is.na() == TRUE
 
       } # FOR-LOOP arg_causa

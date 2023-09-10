@@ -1,4 +1,4 @@
-#+title: Inferência causal para séries temporais
+#+title: Inferência causal para séries temporais usando CausalImpact
 #+author: Rafael Rodrigues de Moraes (ra009681, Doutorando em Demografia pelo IFCH/Unicamp)
 #+startup: inlineimages showall align hidestars
 #+property: header-args:R :session causalimpact
