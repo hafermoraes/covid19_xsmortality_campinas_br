@@ -1,0 +1,945 @@
+#+title: Inferência causal para séries temporais usando técnicas clássicas
+#+author: Rafael Rodrigues de Moraes (ra009681, Doutorando em Demografia pelo IFCH/Unicamp)
+#+startup: inlineimages showall align hidestars
+#+property: header-args:R :session *R*
+#+property: header-args:R+ :exports none
+#+property: header-args:R+ :results silent
+
+* Bibliotecas utilizadas
+  #+begin_src R
+  library(dplyr)     # %>%, mutate, filter
+  library(tidyr)     # pivot_longer
+  library(readr)     # read_delim, write_delim
+  library(lubridate) # floor_date
+  library(forecast)  # auto.arima
+  library(stringr)   # str_sub
+  library(glue)      # glue
+  library(tsbox)     # ts_ts, ts_long
+  library(tibble)    # tribble
+  library(seastests) # ocsb
+  library(ggplot2)   # ggplot, geom_line, facet_wrap, labs, coord_flip
+  library(lmtest)    # bptest
+  #+end_src
+
+
+* Datas usadas na modelagem
+  #+begin_src R
+  covid_BOP <- '2020-03-01'  # Início da pandemia de acordo com a OMS
+  covid_EOP <- '2023-05-01'  # Término da pandemia de acordo com a OMS 
+
+  aux_train_BOP <- '2008-01-01' # Início do período de treino (teste do arima fora da pandemia)
+  aux_train_EOP <- '2018-12-01' # Término do período de treino (teste do arima fora da pandemia)
+  aux_test_BOP  <- '2019-01-01' # Início do período de teste (teste do arima fora da pandemia)
+  aux_test_EOP  <- '2019-12-01' # Término do período de teste (teste do arima fora da pandemia)
+
+  ts_train_BOP <- '2008-01-01'
+  ts_train_EOP <- seq( # usa como treino os dados até o mês antes do início da pandemia
+    from = as.Date(covid_BOP),
+    by='-1 month',
+    length=2)[2] 
+  ts_test_BOP  <- covid_BOP
+  ts_test_EOP  <- '2023-06-01'
+  #+end_src
+
+  
+* Leitura das séries temporais
+  #+begin_src R
+  orig <-
+    readr::read_delim(
+             file = '../data/xsmort.csv',
+             delim = ';'
+           )
+  causas <-
+    readr::read_delim(
+             file = '../raw/causa_id.csv',
+             delim = ';'
+           )
+  #+end_src
+  
+  
+* Preparação das séries para a modelagem ARIMA
+  #+begin_src R
+  ts_long <-
+    orig %>%
+    rowwise() %>% # pqp!!!
+    transmute(
+      causa_id,
+      freq12 = mes,
+      freq6 = lubridate::floor_date( mes, unit='2 months'),   # 6 bimestres no ano...
+      freq4 = lubridate::floor_date( mes, unit='3 months'),   # 4 trimestres no ano...
+      freq2 = lubridate::floor_date( mes, unit='6 months'),   # 2 semestres no ano...
+      mortes,
+      sexo
+    ) %>% 
+    group_by( causa_id, freq12, freq6, freq4, freq2 ) %>%
+    summarise( n = sum(mortes)) %>% 
+    ungroup()
+
+  sum(ts_long$n) == sum(orig$mortes)
+
+  ts_cleared <-
+    bind_rows(
+      ## série mensal
+      ts_long %>%
+      transmute( causa_id, freq = 12, time = freq12, n) %>%
+      group_by( causa_id, freq, time) %>%
+      summarise(n=sum(n)) %>% 
+      ungroup(),
+      ## série bimestral
+      ts_long %>%
+      transmute( causa_id, freq = 6, time = freq6, n) %>%
+      group_by( causa_id, freq, time) %>%
+      summarise(n=sum(n)) %>% 
+      ungroup(),
+      ## série trimestral
+      ts_long %>%
+      transmute( causa_id, freq = 4, time = freq4, n) %>%
+      group_by( causa_id, freq, time) %>%
+      summarise(n=sum(n)) %>% 
+      ungroup(),
+      ## série semestral
+      ts_long %>%
+      transmute( causa_id, freq = 2, time = freq2, n) %>%
+      group_by( causa_id, freq, time) %>%
+      summarise(n=sum(n)) %>% 
+      ungroup()
+    )
+
+  ts_cleared %>%
+    group_by(freq) %>%
+    summarise(n=sum(n)) %>%
+    mutate(
+      mortes = sum(orig$mortes),
+      check = n == sum(orig$mortes)
+    )
+  #+end_src
+
+  
+* Análise exploratória (gráfica)
+  #+begin_src R
+  ## vetor de causas de morte (legenda das análises gráficas)
+  list_causas <-
+    causas %>%
+    transmute( causa = paste(id, causa)) %>%
+    as.data.frame() 
+
+  ## ## dataframe formato wide
+  ## ts_long %>%
+  ##   transmute(
+  ##     causa_id,
+  ##     freq = freq2,
+  ##     n
+  ##   )%>%
+  ##   group_by(causa_id, freq) %>%
+  ##   summarise(n=sum(n)) %>%
+  ##   pivot_wider(
+  ##     id_cols = freq,
+  ##     names_from = causa_id,
+  ##     values_from = n,
+  ##     values_fill = 0
+  ##   ) %>% 
+  ##   as.data.frame() %>%
+  ##   View
+  #+end_src
+   
+** Mensal
+  #+begin_src R
+  ts_cleared %>%
+    filter( freq == 12) %>%
+    ggplot(aes(x=time, y=n))  +
+    geom_line() +
+    geom_vline(aes(xintercept=as.Date(covid_BOP)), color='blue', linetype=2) + 
+    geom_vline(aes(xintercept=as.Date(covid_EOP)), color='blue', linetype=2) +
+    labs(
+      title = "Evolução das causas selecionadas de morte em Campinas",
+      subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
+      x = "mês",
+      y = "número de óbitos",
+      caption = paste0(
+        "Observação:\nLinhas tracejadas em azul marcam o início e término da pandemia de COVID-19\n",
+        "Causas:\n",
+        paste(list_causas$causa, collapse="\n")
+      )
+    ) +
+    facet_wrap(~causa_id, scales="free_y")
+  #+end_src
+
+** Bimestral
+  #+begin_src R
+  ts_cleared %>%
+    filter( freq == 6) %>%
+    ggplot(aes(x=time, y=n))  +
+    geom_line() +
+    geom_vline(aes(xintercept=as.Date(covid_BOP)), color='blue', linetype=2) + 
+    geom_vline(aes(xintercept=as.Date(covid_EOP)), color='blue', linetype=2) +
+    labs(
+      title = "Evolução das causas selecionadas de morte em Campinas",
+      subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
+      x = "bimestre",
+      y = "número de óbitos",
+      caption = paste0(
+        "Observação:\nLinhas tracejadas em azul marcam o início e término da pandemia de COVID-19\n",
+        "Causas:\n",
+        paste(list_causas$causa, collapse="\n")
+      )
+    ) +
+    facet_wrap(~causa_id, scales="free_y")
+  #+end_src
+
+** Trimestral
+  #+begin_src R
+  ts_cleared %>%
+    filter( freq == 4) %>%
+    ggplot(aes(x=time, y=n))  +
+    geom_line() +
+    geom_vline(aes(xintercept=as.Date(covid_BOP)), color='blue', linetype=2) + 
+    geom_vline(aes(xintercept=as.Date(covid_EOP)), color='blue', linetype=2) +
+    labs(
+      title = "Evolução das causas selecionadas de morte em Campinas",
+      subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
+      x = "trimestre",
+      y = "número de óbitos",
+      caption = paste0(
+        "Observação:\nLinhas tracejadas em azul marcam o início e término da pandemia de COVID-19\n",
+        "Causas:\n",
+        paste(list_causas$causa, collapse="\n")
+      )
+    ) +
+    facet_wrap(~causa_id, scales="free_y")
+  #+end_src
+
+** Semestral
+  #+begin_src R
+  ts_cleared %>%
+    filter( freq == 2) %>%
+    ggplot(aes(x=time, y=n))  +
+    geom_line() +
+    geom_vline(aes(xintercept=as.Date(covid_BOP)), color='blue', linetype=2) + 
+    geom_vline(aes(xintercept=as.Date(covid_EOP)), color='blue', linetype=2) +
+    labs(
+      title = "Evolução das causas selecionadas de morte em Campinas",
+      subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
+      x = "semestre",
+      y = "número de óbitos",
+      caption = paste0(
+        "Observação:\nLinhas tracejadas em azul marcam o início e término da pandemia de COVID-19\n",
+        "Causas:\n",
+        paste(list_causas$causa, collapse="\n")
+      )
+    ) +
+    facet_wrap(~causa_id, scales="free_y")
+  #+end_src
+
+
+* Inferência Causal usando técnicas clássicas
+  #+begin_src R
+  freqs <-
+    tibble::tribble(
+              ~freq,     ~by_en,          ~pt,
+              12,       'month',     'mensal',
+              6,     '2 months',  'bimestral',
+              4,     '3 months', 'trimestral',
+              2,     '6 months',  'semestral',
+            )
+
+  ## f <- 12   # freqüência: 12 (mensal), 6 (bimestral), 4 (trimestral) ou 2 (semestral)
+  ## c <- 2    # causa_id ignorando SARS (1): 2:12
+
+  ## ts_cleared %>%
+  ##   filter(
+  ##     freq == f,
+  ##     causa_id == c,
+  ##     time >= aux_train_BOP,
+  ##     time <= aux_train_EOP
+  ##   ) %>% 
+  ##   select(time, n) %>%
+  ## View
+  #+end_src
+  
+** ARIMA automático usando séries auxiliares (fora do período pandêmico)
+*** Ajuste dos modelos
+    #+begin_src R
+    aux_ts_metrics <-
+      tibble::tribble(
+                ~causa_id, ~freq, ~params, ~ljung_box, ~kpss, ~adf, ~ocsb,
+              )
+    aux_ts_forecasts <-
+      tibble::tribble(
+                ~causa_id, ~freq, ~time, ~forecast, ~lower_ci95, ~upper_ci95,
+              )
+    #+end_src
+   
+    #+begin_src R
+    f <- 12   # freqüência: 12 (mensal), 6 (bimestral), 4 (trimestral) ou 2 (semestral)
+    c <- 2    # causa_id ignorando SARS (1): 2:12
+
+    for(f in freqs$freq){
+      for(c in subset(causas, id != 1)$id) {
+        ## converte tibble/dataframe para objeto ts
+        ## https://stackoverflow.com/a/57466620
+        ## https://docs.ropensci.org/tsbox/
+        aux_ts <-
+          tsbox::ts_ts(
+                   tsbox::ts_long(
+                            ts_cleared %>%
+                            filter(
+                              freq == f,
+                              causa_id == c,
+                              time >= aux_train_BOP,
+                              time <= aux_train_EOP
+                            ) %>% 
+                            select(time, n)     
+                          )
+                 )
+
+        ## ajuste automático das séries
+        model <- forecast::auto.arima(aux_ts)
+        forec <- forecast::forecast(
+                             model,
+                             level = c(0.95),
+                             h=seq(
+                               from = as.Date(aux_test_BOP),
+                               to = as.Date(aux_test_EOP),
+                               by = subset(freqs, freq == f)$by_en
+                             ) %>% length()
+                           )
+
+        ## resíduos do modelo auxiliar estimdo automaticamente pelo auto.arima
+        png( filename = glue::glue('../imgs/arima/aux_ts/diagnostics/causaid{c}_freq{f}_auxts_residuals.png'), width=800, height=600)
+        aux_ts_residuals <- checkresiduals(model)
+        dev.off()
+
+        ## guarda projeções para uso futuro
+        aux_ts_forecasts <- bind_rows(
+          aux_ts_forecasts,
+          data.frame(
+            causa_id = c,
+            freq = f,
+            time = seq(
+              from = as.Date(aux_test_BOP),
+              to = as.Date(aux_test_EOP),
+              by = subset(freqs, freq == f)$by_en
+            ),
+            forecast = forec$mean %>% as.numeric(),
+            lower_ci95 = forec$lower %>% as.numeric(),
+            upper_ci95 = forec$upper %>% as.numeric()    
+          )
+        )
+
+        ## guarda métricas do modelo para uso futuro
+        ljung_box_pvalue <- Box.test(model$residuals, lag=1, type = 'Ljung-Box')$p.value
+        kpss_pvalue      <- tseries::kpss.test(tseries::na.remove(aux_ts))$p.value
+        adf_pvalue        <- tseries::adf.test(tseries::na.remove(aux_ts))$p.value
+        ocsb_pvalue      <- seastests::ocsb(aux_ts)$Pval
+
+        ## TSA::McLeod.Li.test(model, plot=FALSE)$p.values
+
+        aux_ts_metrics   <- bind_rows(
+          aux_ts_metrics,
+          data.frame(
+            causa_id = c,
+            freq = f,
+            params = str_replace( aux_ts_residuals$data.name, "Residuals from ", ""),
+            ## [Ljung-Box] H0: The residuals are independently distributed
+            ljung_box = ljung_box_pvalue,
+            ## [KPSS] H0: The time series is trend stationary
+            kpss = kpss_pvalue,
+            ## [ADF] H0: The time series is non-stationary.
+            adf = adf_pvalue,
+            ## [OCSB] H0: The time series contains a seasonal unit root
+            ocsb = ocsb_pvalue
+          )
+        )
+
+        ## bondade do ajuste do modelo estimado automaticamente via auto.arima
+        png( filename = glue::glue('../imgs/arima/aux_ts/diagnostics/causaid{c}_freq{f}_auxts_gof.png'), width=800, height=600)
+        plot_caption <- paste0(
+          list_causas[c,],'\n',
+          'Frequência: ', subset(freqs, freq == f)$pt,' / ',
+          'Treino: ', aux_train_BOP,'-',aux_train_EOP,' / ',
+          'Teste: ', aux_test_BOP,'-',aux_test_EOP, '\n',
+          'p.values: ',
+          round(ljung_box_pvalue,5), '(Ljung-Box), ',
+          round(kpss_pvalue,5), '(KPSS), ',
+          round(adf_pvalue,5), '(ADF), ',
+          round(ocsb_pvalue,5), '(OCSB)'    
+        )
+        plot(forec, sub=plot_caption)
+        lines(fitted(model),col="blue")
+        lines(
+          tsbox::ts_ts(
+                   tsbox::ts_long(
+                            ts_cleared %>%
+                            filter(
+                              freq == f,
+                              causa_id == c,
+                              time >= aux_test_BOP,
+                              time <= aux_test_EOP
+                            ) %>% 
+                            select(time, n)     
+                          )
+                 )
+        )
+        dev.off()
+      } # FOR-LOOP causa_id
+    } # FOR-LOOP freq
+
+    ## excesso de mortalidade nas séries auxiliares
+    aux_ts_xsmort <- 
+      ts_cleared %>%
+      left_join(
+        aux_ts_forecasts
+      ) 
+
+    ## salva resultados em disco
+    aux_ts_xsmort %>%
+      filter(causa_id != 0) %>%
+      write_csv2(
+        '../data/arima/aux_ts/aux_ts_xsmort.csv'
+      )
+    aux_ts_metrics %>%
+      filter(causa_id != 0) %>%
+      write_csv2(
+        '../data/arima/aux_ts/aux_ts_metrics.csv'
+      )
+    #+end_src
+
+    #+begin_src R
+    ## checagem dos totais novamente...
+    aux_ts_xsmort %>%
+      group_by(freq) %>%
+      summarise(n=sum(n)) %>%
+      mutate(
+        mortes = sum(orig$mortes),
+        check = n == sum(orig$mortes)
+      )
+    #+end_src
+
+*** Análises gráficas
+    #+begin_src R
+    aux_ts_xsmort <-
+      read_csv2(
+        '../data/arima/aux_ts/aux_ts_xsmort.csv'
+      )
+    ## vetor de causas de morte (legenda das análises gráficas)
+    list_causas <-
+      causas %>%
+      transmute( causa = paste(id, causa)) %>%
+      as.data.frame() 
+    #+end_src
+    
+**** Mensal
+     #+begin_src R
+     f <- 12
+     plot <- aux_ts_xsmort %>% 
+       filter(
+         time >= '2010-01-01',
+         time <= aux_test_EOP,
+         freq == f
+       ) %>%
+       ggplot(aes(x=time, y=n))  +
+       geom_line() +
+       geom_line(aes(y=forecast), color='red', lty=1) + # projeção do modelo ARIMA
+       geom_line(aes(y=lower_ci95), color='red', lty=2) + # intervalo inferior da projeção do modelo ARIMA
+       geom_line(aes(y=upper_ci95), color='red', lty=2) + # intervalo superior da projeção do modelo ARIMA
+       geom_vline(aes(xintercept=as.Date(aux_test_BOP)), color='blue', linetype=2) + 
+       geom_vline(aes(xintercept=as.Date(aux_test_EOP)), color='blue', linetype=2) +
+       labs(
+         title = glue::glue("Evolução {subset(freqs, freq==f)$pt} das causas selecionadas de morte em Campinas (Treino 2010-2018, Teste 2019)"),
+         subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
+         x = "",
+         y = "número de óbitos",
+         caption = paste0(
+           "Observação:\nLinhas tracejadas em azul marcam o início e término do período de teste\n",
+           "Linha contínua em vermelho indica a projeção de mortes segundo modelo ARIMA\n",
+           "Linahs tracejadas em vermelho indicam o intervalo confiança de 95% para a projeção do modelo ARIMA",
+           "Causas:\n",
+           paste(list_causas$causa, collapse="\n")
+         )
+       ) +
+       facet_wrap(~causa_id, scales="free_y")
+
+     ggsave(
+       plot,
+       filename = glue::glue('../imgs/arima/aux_ts/freq{f}_projections.png'),
+       width = 12,
+       height = 8
+     )
+     #+end_src
+
+**** Bimestral
+     #+begin_src R
+     f <- 6
+     plot <- aux_ts_xsmort %>% 
+       filter(
+         time >= '2010-01-01',
+         time <= aux_test_EOP,
+         freq == f
+       ) %>%
+       ggplot(aes(x=time, y=n))  +
+       geom_line() +
+       geom_line(aes(y=forecast), color='red', lty=1) + # projeção do modelo ARIMA
+       geom_line(aes(y=lower_ci95), color='red', lty=2) + # intervalo inferior da projeção do modelo ARIMA
+       geom_line(aes(y=upper_ci95), color='red', lty=2) + # intervalo superior da projeção do modelo ARIMA
+       geom_vline(aes(xintercept=as.Date(aux_test_BOP)), color='blue', linetype=2) + 
+       geom_vline(aes(xintercept=as.Date(aux_test_EOP)), color='blue', linetype=2) +
+       labs(
+         title = glue::glue("Evolução {subset(freqs, freq==f)$pt} das causas selecionadas de morte em Campinas (Treino 2010-2018, Teste 2019)"),
+         subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
+         x = "",
+         y = "número de óbitos",
+         caption = paste0(
+           "Observação:\nLinhas tracejadas em azul marcam o início e término do período de teste\n",
+           "Linha contínua em vermelho indica a projeção de mortes segundo modelo ARIMA\n",
+           "Linahs tracejadas em vermelho indicam o intervalo confiança de 95% para a projeção do modelo ARIMA",
+           "Causas:\n",
+           paste(list_causas$causa, collapse="\n")
+         )
+       ) +
+       facet_wrap(~causa_id, scales="free_y")
+
+     ggsave(
+       plot,
+       filename = glue::glue('../imgs/arima/aux_ts/freq{f}_projections.png'),
+       width = 12,
+       height = 8
+     )
+     #+end_src
+
+**** Trimestral
+     #+begin_src R
+     f <- 4
+     plot <- aux_ts_xsmort %>% 
+       filter(
+         time >= '2010-01-01',
+         time <= aux_test_EOP,
+         freq == f
+       ) %>%
+       ggplot(aes(x=time, y=n))  +
+       geom_line() +
+       geom_line(aes(y=forecast), color='red', lty=1) + # projeção do modelo ARIMA
+       geom_line(aes(y=lower_ci95), color='red', lty=2) + # intervalo inferior da projeção do modelo ARIMA
+       geom_line(aes(y=upper_ci95), color='red', lty=2) + # intervalo superior da projeção do modelo ARIMA
+       geom_vline(aes(xintercept=as.Date(aux_test_BOP)), color='blue', linetype=2) + 
+       geom_vline(aes(xintercept=as.Date(aux_test_EOP)), color='blue', linetype=2) +
+       labs(
+         title = glue::glue("Evolução {subset(freqs, freq==f)$pt} das causas selecionadas de morte em Campinas (Treino 2010-2018, Teste 2019)"),
+         subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
+         x = "",
+         y = "número de óbitos",
+         caption = paste0(
+           "Observação:\nLinhas tracejadas em azul marcam o início e término do período de teste\n",
+           "Linha contínua em vermelho indica a projeção de mortes segundo modelo ARIMA\n",
+           "Linahs tracejadas em vermelho indicam o intervalo confiança de 95% para a projeção do modelo ARIMA",
+           "Causas:\n",
+           paste(list_causas$causa, collapse="\n")
+         )
+       ) +
+       facet_wrap(~causa_id, scales="free_y")
+
+     ggsave(
+       plot,
+       filename = glue::glue('../imgs/arima/aux_ts/freq{f}_projections.png'),
+       width = 12,
+       height = 8
+     )
+     #+end_src
+
+**** Semestral
+     #+begin_src R
+     f <- 2
+     plot <- aux_ts_xsmort %>% 
+       filter(
+         time >= '2010-01-01',
+         time <= aux_test_EOP,
+         freq == f
+       ) %>%
+       ggplot(aes(x=time, y=n))  +
+       geom_line() +
+       geom_line(aes(y=forecast), color='red', lty=1) + # projeção do modelo ARIMA
+       geom_line(aes(y=lower_ci95), color='red', lty=2) + # intervalo inferior da projeção do modelo ARIMA
+       geom_line(aes(y=upper_ci95), color='red', lty=2) + # intervalo superior da projeção do modelo ARIMA
+       geom_vline(aes(xintercept=as.Date(aux_test_BOP)), color='blue', linetype=2) + 
+       geom_vline(aes(xintercept=as.Date(aux_test_EOP)), color='blue', linetype=2) +
+       labs(
+         title = glue::glue("Evolução {subset(freqs, freq==f)$pt} das causas selecionadas de morte em Campinas (Treino 2010-2018, Teste 2019)"),
+         subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
+         x = "",
+         y = "número de óbitos",
+         caption = paste0(
+           "Observação:\nLinhas tracejadas em azul marcam o início e término do período de teste\n",
+           "Linha contínua em vermelho indica a projeção de mortes segundo modelo ARIMA\n",
+           "Linahs tracejadas em vermelho indicam o intervalo confiança de 95% para a projeção do modelo ARIMA",
+           "Causas:\n",
+           paste(list_causas$causa, collapse="\n")
+         )
+       ) +
+       facet_wrap(~causa_id, scales="free_y")
+
+     ggsave(
+       plot,
+       filename = glue::glue('../imgs/arima/aux_ts/freq{f}_projections.png'),
+       width = 12,
+       height = 8
+     )
+     #+end_src
+ 
+
+** ARIMA automático usando série COVID-19
+*** Ajuste dos modelos
+    #+begin_src R
+    covid_ts_metrics <-
+      tibble::tribble(
+                ~causa_id, ~freq, ~params, ~ljung_box, ~kpss, ~adf, ~ocsb,
+              )
+    covid_ts_forecasts <-
+      tibble::tribble(
+                ~causa_id, ~freq, ~time, ~forecast, ~lower_ci95, ~upper_ci95,
+              )
+    #+end_src
+    
+    #+begin_src R
+    for(f in freqs$freq){
+      for(c in subset(causas, id != 1)$id) {
+        ## converte tibble/dataframe para objeto ts
+        ## https://stackoverflow.com/a/57466620
+        ## https://docs.ropensci.org/tsbox/
+        covid_ts <-
+          tsbox::ts_ts(
+                   tsbox::ts_long(
+                            ts_cleared %>%
+                            filter(
+                              freq == f,
+                              causa_id == c,
+                              time >= ts_train_BOP,
+                              time <= ts_train_EOP
+                            ) %>% 
+                            select(time, n)     
+                          )
+                 )
+
+        ## ajuste automático das séries
+        model <- forecast::auto.arima(covid_ts)
+        forec <- forecast::forecast(
+                             model,
+                             level = c(0.95),
+                             h=seq(
+                               from = as.Date(ts_test_BOP),
+                               to = as.Date(ts_test_EOP),
+                               by = subset(freqs, freq == f)$by_en
+                             ) %>%
+                               length()
+                           )
+
+        ## resíduos do modelo auxiliar estimdo automaticamente pelo auto.arima
+        png( filename = glue::glue('../imgs/arima/covid_ts/diagnostics/causaid{c}_freq{f}_covidts_residuals.png'), width=800, height=600)
+        covid_ts_residuals <- checkresiduals(model)
+        dev.off()
+
+        ## guarda projeções para uso futuro
+        covid_ts_forecasts <- bind_rows(
+          covid_ts_forecasts,
+          data.frame(
+            causa_id = c,
+            freq = f,
+            time = seq(
+              from = as.Date(ts_test_BOP),
+              to = as.Date(ts_test_EOP),
+              by = subset(freqs, freq == f)$by_en
+            ) %>% lubridate::floor_date( unit = subset(freqs, freq == f)$by_en ),
+            forecast = forec$mean %>% as.numeric(),
+            lower_ci95 = forec$lower %>% as.numeric(),
+            upper_ci95 = forec$upper %>% as.numeric()    
+          )
+        )
+
+        ## guarda métricas do modelo para uso futuro
+        ljung_box_pvalue <- Box.test(model$residuals, lag=1, type = 'Ljung-Box')$p.value
+        kpss_pvalue      <- tseries::kpss.test(tseries::na.remove(covid_ts))$p.value
+        adf_pvalue        <- tseries::adf.test(tseries::na.remove(covid_ts))$p.value
+        ocsb_pvalue      <- seastests::ocsb(covid_ts)$Pval
+
+        covid_ts_metrics   <- bind_rows(
+          covid_ts_metrics,
+          data.frame(
+            causa_id = c,
+            freq = f,
+            params = str_replace( covid_ts_residuals$data.name, "Residuals from ", ""),
+            ## [Ljung-Box] H0: The residuals are independently distributed
+            ljung_box = ljung_box_pvalue,
+            ## [KPSS] H0: The time series is trend stationary
+            kpss = kpss_pvalue,
+            ## [ADF] H0: The time series is non-stationary.
+            adf = adf_pvalue,
+            ## [OCSB] H0: The time series contains a seasonal unit root
+            ocsb = ocsb_pvalue
+          )
+        )
+
+        ## bondade do ajuste do modelo estimado automaticamente via auto.arima
+        png( filename = glue::glue('../imgs/arima/covid_ts/diagnostics/causaid{c}_freq{f}_covidts_gof.png'), width=800, height=600)
+        plot_caption <- paste0(
+          list_causas[c,],'\n',
+          'Frequência: ', subset(freqs, freq == f)$pt,' / ',
+          'Treino: ', ts_train_BOP,'-',ts_train_EOP,' / ',
+          'Teste: ', ts_test_BOP,'-',ts_test_EOP, '\n',
+          'p.values: ',
+          round(ljung_box_pvalue,5), '(Ljung-Box), ',
+          round(kpss_pvalue,5), '(KPSS), ',
+          round(adf_pvalue,5), '(ADF), ',
+          round(ocsb_pvalue,5), '(OCSB)'    
+        )
+        plot(forec, sub=plot_caption)
+        lines(fitted(model),col="blue")
+        lines(
+          tsbox::ts_ts(
+                   tsbox::ts_long(
+                            ts_cleared %>%
+                            filter(
+                              freq == f,
+                              causa_id == c,
+                              time >= ts_test_BOP,
+                              time <= ts_test_EOP
+                            ) %>% 
+                            select(time, n)     
+                          )
+                 )
+        )
+        dev.off()
+      } # FOR-LOOP causa_id
+    } # FOR-LOOP freq
+
+    ## excesso de mortalidade nas séries auxiliares
+    covid_ts_xsmort <- 
+      ts_cleared %>%
+      left_join(
+        covid_ts_forecasts
+      ) 
+
+    ## salva resultados em disco
+    covid_ts_xsmort %>%
+      filter(causa_id != 0) %>%
+      write_csv2(
+        '../data/arima/covid_ts/covid_ts_xsmort.csv'
+      )
+    covid_ts_metrics %>%
+      filter(causa_id != 0) %>%
+      write_csv2(
+        '../data/arima/covid_ts/covid_ts_metrics.csv'
+      )
+    #+end_src
+
+    #+begin_src R
+    ## checagem dos totais novamente...
+    covid_ts_xsmort %>%
+      group_by(freq) %>%
+      summarise(n=sum(n)) %>%
+      mutate(
+        mortes = sum(orig$mortes),
+        check = n == sum(orig$mortes)
+      )
+    #+end_src
+
+
+*** Análises gráficas
+    #+begin_src R
+    covid_ts_xsmort <-
+      read_csv2(
+        '../data/arima/covid_ts/covid_ts_xsmort.csv'
+      )
+    ## vetor de causas de morte (legenda das análises gráficas)
+    list_causas <-
+      causas %>%
+      transmute( causa = paste(id, causa)) %>%
+      as.data.frame() 
+    #+end_src
+    
+**** Mensal
+     #+begin_src R
+     f <- 12
+     plot <- covid_ts_xsmort %>% 
+       filter(
+         time >= '2010-01-01',
+         freq == f
+       ) %>%
+       ggplot(aes(x=time, y=n))  +
+       geom_line() +
+       geom_line(aes(y=forecast), color='red', lty=1) + # projeção do modelo ARIMA
+       geom_line(aes(y=lower_ci95), color='red', lty=2) + # intervalo inferior da projeção do modelo ARIMA
+       geom_line(aes(y=upper_ci95), color='red', lty=2) + # intervalo superior da projeção do modelo ARIMA
+       geom_vline(aes(xintercept=as.Date(covid_BOP)), color='blue', linetype=2) + 
+       geom_vline(aes(xintercept=as.Date(covid_EOP)), color='blue', linetype=2) +
+       labs(
+         title = glue::glue("Evolução {subset(freqs, freq==f)$pt} das causas selecionadas de morte em Campinas"),
+         subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
+         x = "",
+         y = "número de óbitos",
+         caption = paste0(
+           "Observação:\nLinhas tracejadas em azul marcam o início e término da pandemia de COVID-19\n",
+           "Linha contínua em vermelho indica a projeção de mortes segundo modelo ARIMA\n",
+           "Linahs tracejadas em vermelho indicam o intervalo confiança de 95% para a projeção do modelo ARIMA",
+           "Causas:\n",
+           paste(list_causas$causa, collapse="\n")
+         )
+       ) +
+       facet_wrap(~causa_id, scales="free_y")
+
+     ggsave(
+       plot,
+       filename = glue::glue('../imgs/arima/covid_ts/freq{f}_projections.png'),
+       width = 12,
+       height = 8
+     )
+     #+end_src
+
+**** Bimestral
+     #+begin_src R
+     f <- 6
+     plot <- covid_ts_xsmort %>%
+       filter(
+         time >= '2010-01-01',
+         freq == f
+       ) %>%
+       ggplot(aes(x=time, y=n))  +
+       geom_line() +
+       geom_line(aes(y=forecast), color='red', lty=1) + # projeção do modelo ARIMA
+       geom_line(aes(y=lower_ci95), color='red', lty=2) + # intervalo inferior da projeção do modelo ARIMA
+       geom_line(aes(y=upper_ci95), color='red', lty=2) + # intervalo superior da projeção do modelo ARIMA
+       geom_vline(aes(xintercept=as.Date(covid_BOP)), color='blue', linetype=2) + 
+       geom_vline(aes(xintercept=as.Date(covid_EOP)), color='blue', linetype=2) +
+       labs(
+         title = glue::glue("Evolução {subset(freqs, freq==f)$pt} das causas selecionadas de morte em Campinas"),
+         subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
+         x = "",
+         y = "número de óbitos",
+         caption = paste0(
+           "Observação:\nLinhas tracejadas em azul marcam o início e término da pandemia de COVID-19\n",
+           "Linha contínua em vermelho indica a projeção de mortes segundo modelo ARIMA\n",
+           "Linahs tracejadas em vermelho indicam o intervalo confiança de 95% para a projeção do modelo ARIMA",
+           "Causas:\n",
+           paste(list_causas$causa, collapse="\n")
+         )
+       ) +
+       facet_wrap(~causa_id, scales="free_y")
+
+     ggsave(
+       plot,
+       filename = glue::glue('../imgs/arima/covid_ts/freq{f}_projections.png'),
+       width = 12,
+       height = 8
+     )
+     #+end_src
+
+**** Trimestral
+     #+begin_src R
+     f <- 4
+     plot <- covid_ts_xsmort %>%
+       filter(
+         time >= '2010-01-01',
+         freq == f
+       ) %>% 
+       ggplot(aes(x=time, y=n))  +
+       geom_line() +
+       geom_line(aes(y=forecast), color='red', lty=1) + # projeção do modelo ARIMA
+       geom_line(aes(y=lower_ci95), color='red', lty=2) + # intervalo inferior da projeção do modelo ARIMA
+       geom_line(aes(y=upper_ci95), color='red', lty=2) + # intervalo superior da projeção do modelo ARIMA
+       geom_vline(aes(xintercept=as.Date(covid_BOP)), color='blue', linetype=2) + 
+       geom_vline(aes(xintercept=as.Date(covid_EOP)), color='blue', linetype=2) +
+       labs(
+         title = glue::glue("Evolução {subset(freqs, freq==f)$pt} das causas selecionadas de morte em Campinas"),
+         subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
+         x = "",
+         y = "número de óbitos",
+         caption = paste0(
+           "Observação:\nLinhas tracejadas em azul marcam o início e término da pandemia de COVID-19\n",
+           "Linha contínua em vermelho indica a projeção de mortes segundo modelo ARIMA\n",
+           "Linahs tracejadas em vermelho indicam o intervalo confiança de 95% para a projeção do modelo ARIMA",
+           "Causas:\n",
+           paste(list_causas$causa, collapse="\n")
+         )
+       ) +
+       facet_wrap(~causa_id, scales="free_y")
+
+     ggsave(
+       plot,
+       filename = glue::glue('../imgs/arima/covid_ts/freq{f}_projections.png'),
+       width = 12,
+       height = 8
+     )
+     #+end_src
+
+**** Semestral
+     #+begin_src R
+     f <- 2
+     plot <- covid_ts_xsmort %>%
+       filter(
+         time >= '2010-01-01',
+         freq == f
+       ) %>%
+       ggplot(aes(x=time, y=n))  +
+       geom_line() +
+       geom_line(aes(y=forecast), color='red', lty=1) + # projeção do modelo ARIMA
+       geom_line(aes(y=lower_ci95), color='red', lty=2) + # intervalo inferior da projeção do modelo ARIMA
+       geom_line(aes(y=upper_ci95), color='red', lty=2) + # intervalo superior da projeção do modelo ARIMA
+       geom_vline(aes(xintercept=as.Date(covid_BOP)), color='blue', linetype=2) + 
+       geom_vline(aes(xintercept=as.Date(covid_EOP)), color='blue', linetype=2) +
+       labs(
+         title = glue::glue("Evolução {subset(freqs, freq==f)$pt} das causas selecionadas de morte em Campinas"),
+         subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
+         x = "",
+         y = "número de óbitos",
+         caption = paste0(
+           "Observação:\nLinhas tracejadas em azul marcam o início e término da pandemia de COVID-19\n",
+           "Linha contínua em vermelho indica a projeção de mortes segundo modelo ARIMA\n",
+           "Linahs tracejadas em vermelho indicam o intervalo confiança de 95% para a projeção do modelo ARIMA",
+           "Causas:\n",
+           paste(list_causas$causa, collapse="\n")
+         )
+       ) +
+       facet_wrap(~causa_id, scales="free_y")
+
+     ggsave(
+       plot,
+       filename = glue::glue('../imgs/arima/covid_ts/freq{f}_projections.png'),
+       width = 12,
+       height = 8
+     )
+     #+end_src     
+ 
+
+*** Excesso de mortes por COVID-19
+    
+    #+begin_src R 
+    xsdeaths_plot <-
+      covid_ts_xsmort %>%
+      na.omit() %>%
+      left_join( freqs) %>%
+      group_by( pt ) %>%
+      summarise(
+        n = sum(n),
+        forecast = sum(forecast)
+      ) %>%
+      mutate(
+        xsdeaths = n - forecast
+      ) %>%
+      pivot_longer(
+        cols = -pt
+      ) %>%
+      filter( name == 'xsdeaths') %>%
+      ggplot( aes( x = pt, y = value)) +
+      geom_col() +
+      labs(
+        title = 'Estimativa do excesso de mortes por COVID-19 em Campinas/SP',
+        subtitle = 'Fonte: TABNET/Campinas, acesso em 08.09.2023',
+        x = 'frequência utilizada nos modelos',
+        y = 'excesso de mortes por COVID-19'
+      ) + 
+      coord_flip()
+
+    ggsave(
+      xsdeaths_plot,
+      filename = '../imgs/arima/covid_ts/xsdeaths.png',
+      width=9,
+      height=7
+    )
+    #+end_src
