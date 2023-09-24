@@ -1,0 +1,105 @@
+* STARTED Excesso de mortalidade por COVID19
+** DONE Arima/Sarima automático [3/3]
+   CLOSED: [2023-09-22 sex 13:26]
+*** DONE Justificativa teórica para uso do ARIMA
+    CLOSED: [2023-09-22 sex 13:26]
+
+    Apesar da crescente disponibilidade de novos métodos de inteligência artificial (redes neurais e aprendizagem de máquina) aplicados às previsões de séries temporais, estudos comparativos robustos apontam que os métodos estatísticos clássicos superam as performances daqueles modelos de inteligência artifical (MAKRIDAKIS 2000, MAKRIDAKIS ET AL. 2018), entre eles o modelo autoregressivo integrado de médias móveis -- ARIMA.
+
+    #+begin_quote
+    This study, the previous two M-Competitions and many other empirical studies have proven, beyond the slightest doubt, that elaborate theoretical constructs or more sophisticated methods do not necessarily improve post-sample forecasting accuracy, over simple methods, although they can better fit a statistical model to the available historical data. (MAKRIDAKIS, 2000)
+    #+end_quote
+
+    Por este motivo, a classe de modelos ARIMA foi escolhida como técnica para ajuste e previsão das séries temporais referentes aos números de mortes por grandes grupos de causas em Campinas/SP.
+
+    Uma medida adicional foi adotada para reduzir a incidência de zeros nas séries temporais para algumas causas de morte, especialmente quando a frequência é mensal, pois nelas a volumetria é baixa e composta por meses sem óbitos. O entendimento é que este excesso de zeros tende a prejudicar a análise da tendência dos óbitos e impactar negativamente na estimação do modelo ARIMA em relação à estacionariedade, autocorrelação e heteroscedasticidade das séries. Optou-se portanto pelo agrupamento de mortes em unidades temporais distintas como medida de mitigação do excesso de zeros na série original, tais como séries bimestrais, trimestrais e semestrais.
+
+    Tendo em vista que para esta aplicação o interesse é ajustar o melhor modelo ARIMA possível de predição com base nos dados, sendo portanto a interpretabilidade de seus parâmetros um tema de menor importância, recorreu-se ao algoritmo step-wise implementado por Hyndman & Khandakar (2008) no software GNU R através do pacote forecast para determinação automática da ordem do modelo ARIMA (ou seja, seus parâmetros p, d e q), contornando assim a tarefa de análise subjetiva dos gráficos das funções de autocorrelação e autocorrelação parciais para identificação da ordem do modelo ARIMA(p,d,q) que melhor se ajusta aos dados.
+
+    Desta forma, e com base na grande quantidade de modelos a serem ajustados em decorrência dos grandes grupos de causa de morte e das frequências das séries temporais (mensal, bimestral, trimestral e semestral), viabilizou-se a estimação automática dos melhores modelos ARIMA aos dados para cada grupo de causas de morte e frequência.
+      
+    
+    #+begin_src bibtex
+    @article{Makridakis2000,
+      title        = {The M3-Competition: results, conclusions and
+                      implications},
+      journal      = {International Journal of Forecasting},
+      volume       = 16,
+      number       = 4,
+      pages        = {451-476},
+      year         = 2000,
+      note         = {The M3- Competition},
+      issn         = {0169-2070},
+      doi          = {https://doi.org/10.1016/S0169-2070(00)00057-1},
+      url          =
+                      {https://www.sciencedirect.com/science/article/pii/S0169207000000571},
+      author       = {Spyros Makridakis and Michèle Hibon},
+    }
+
+    @article{MakridakisEtAl2018,
+      doi          = {10.1371/journal.pone.0194889},
+      author       = {Makridakis, Spyros AND Spiliotis, Evangelos AND
+                      Assimakopoulos, Vassilios},
+      journal      = {PLOS ONE},
+      publisher    = {Public Library of Science},
+      title        = {Statistical and Machine Learning forecasting
+                      methods: Concerns and ways forward},
+      year         = {2018},
+      month        = {03},
+      volume       = {13},
+      url          = {https://doi.org/10.1371/journal.pone.0194889},
+      pages        = {1-26},
+      number       = {3},
+    }
+
+    @article{HyndmanKhandakar2008,
+      title        = {Automatic Time Series Forecasting: The forecast
+                      Package for R},
+      volume       = {27},
+      url          =
+                      {https://www.jstatsoft.org/index.php/jss/article/view/v027i03},
+      doi          = {10.18637/jss.v027.i03},
+      number       = {3},
+      journal      = {Journal of Statistical Software},
+      author       = {Hyndman, Rob J. and Khandakar, Yeasmin},
+      year         = {2008},
+      pages        = {1–22}
+    }
+    #+end_src
+      
+*** DONE Links com scripts
+    CLOSED: [2023-09-22 sex 11:42]
+**** modelos clássicos
+     https://rpubs.com/jaimeisaacp/778707
+     https://pt.stackoverflow.com/questions/414078/como-usar-o-auto-arima-para-prever-24-per%C3%ADodos-ou-mais-no-r
+     https://www.monolitonimbus.com.br/modelo-arima-e-previsao-no-r/
+     https://towardsdatascience.com/time-series-analysis-with-auto-arima-in-r-2b220b20e8ab
+     https://datascienceplus.com/time-series-analysis-using-arima-model-in-r/
+     https://otexts.com/fpp2/arima-r.html
+**** modelos de machine learning
+     https://machinelearningmastery.com/findings-comparing-classical-and-machine-learning-methods-for-time-series-forecasting/
+*** DONE Testes estatísticos para a frequência escolhida
+    CLOSED: [2023-09-22 sex 13:03]
+**** Ljung-Box (autocorrelação dos resíduos)
+     H0: The residuals are independently distributed
+
+     Resíduos do modelo arima deveriam ser ruído branco, indicando um bom ajuste do modelo. Desta forma, esperamos que a hipótese nula não seja rejeitada, ou seja, que o p-valor reportado no arquivo data/arima/covid_ts/covid_ts_metrics.csv seja superior a 0.05
+       
+**** OCSB (sazonalidade)
+     H0: The time series contains a seasonal unit root
+
+     Como o modelo arima geralmente não tem o componente sazonal (para isso existe o modelo SARIMA, que não ajustamos aos dados), esperamos que a hipótese nula seja rejeitada, ou seja, que o p-valor reportado no arquivo data/arima/covid_ts/covid_ts_metrics.csv seja inferior a 0.05
+       
+**** KPSS (estacionariedade)
+     H0: The time series is trend stationary
+
+     Como o modelo arima precisa ser ajustado a séries estacionárias, esperamos que a hipótese nula não seja rejeitada, ou seja, que o p-valor reportado no arquivo data/arima/covid_ts/covid_ts_metrics.csv seja superior a 0.05
+              
+**** ADF (estacionariedade)
+     H0: The time series is non-stationary.
+
+     Como o modelo arima precisa ser ajustado a séries estacionárias, esperamos que a hipótese nula seja rejeitada, ou seja, que o p-valor reportado no arquivo data/arima/covid_ts/covid_ts_metrics.csv seja inferior a 0.05
+       
+** CANCELLED CausalImpact
+   CLOSED: [2023-08-31 qui 17:25]
+   https://pt.stackoverflow.com/questions/194497/fun%C3%A7%C3%A3o-post-do-pacote-httr-retorna-na
