@@ -113,7 +113,7 @@
       check = n == sum(orig$mortes)
     )
   #+end_src
-
+  
   
 * Análise exploratória (gráfica)
   #+begin_src R
@@ -151,17 +151,18 @@
     geom_vline(aes(xintercept=as.Date(covid_BOP)), color='blue', linetype=2) + 
     geom_vline(aes(xintercept=as.Date(covid_EOP)), color='blue', linetype=2) +
     labs(
-      title = "Evolução das causas selecionadas de morte em Campinas",
-      subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
-      x = "mês",
-      y = "número de óbitos",
-      caption = paste0(
-        "Observação:\nLinhas tracejadas em azul marcam o início e término da pandemia de COVID-19\n",
-        "Causas:\n",
-        paste(list_causas$causa, collapse="\n")
-      )
+      ## title = "Evolução das causas selecionadas de morte em Campinas",
+      ## subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
+      x = "month",
+      y = "number of deaths",
+      ## caption = paste0(
+      ##   "Observação:\nLinhas tracejadas em azul marcam o início e término da pandemia de COVID-19\n",
+      ##   "Causas:\n",
+      ##   paste(list_causas$causa, collapse="\n")
+      ## )
     ) +
-    facet_wrap(~causa_id, scales="free_y")
+    facet_wrap(~causa_id, scales="free_y") +
+    theme_bw()
   #+end_src
 
 ** Bimestral
@@ -173,17 +174,18 @@
     geom_vline(aes(xintercept=as.Date(covid_BOP)), color='blue', linetype=2) + 
     geom_vline(aes(xintercept=as.Date(covid_EOP)), color='blue', linetype=2) +
     labs(
-      title = "Evolução das causas selecionadas de morte em Campinas",
-      subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
-      x = "bimestre",
-      y = "número de óbitos",
-      caption = paste0(
-        "Observação:\nLinhas tracejadas em azul marcam o início e término da pandemia de COVID-19\n",
-        "Causas:\n",
-        paste(list_causas$causa, collapse="\n")
-      )
+      ## title = "Evolução das causas selecionadas de morte em Campinas",
+      ## subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
+      x = "two months period",
+      y = "number of deaths",
+      ## caption = paste0(
+      ##   "Observação:\nLinhas tracejadas em azul marcam o início e término da pandemia de COVID-19\n",
+      ##   "Causas:\n",
+      ##   paste(list_causas$causa, collapse="\n")
+      ## )
     ) +
-    facet_wrap(~causa_id, scales="free_y")
+    facet_wrap(~causa_id, scales="free_y") +
+    theme_bw()
   #+end_src
 
 ** Trimestral
@@ -195,17 +197,18 @@
     geom_vline(aes(xintercept=as.Date(covid_BOP)), color='blue', linetype=2) + 
     geom_vline(aes(xintercept=as.Date(covid_EOP)), color='blue', linetype=2) +
     labs(
-      title = "Evolução das causas selecionadas de morte em Campinas",
-      subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
-      x = "trimestre",
-      y = "número de óbitos",
-      caption = paste0(
-        "Observação:\nLinhas tracejadas em azul marcam o início e término da pandemia de COVID-19\n",
-        "Causas:\n",
-        paste(list_causas$causa, collapse="\n")
-      )
+      ## title = "Evolução das causas selecionadas de morte em Campinas",
+      ## subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
+      x = "quarter",
+      y = "number of deaths",
+      ## caption = paste0(
+      ##   "Observação:\nLinhas tracejadas em azul marcam o início e término da pandemia de COVID-19\n",
+      ##   "Causas:\n",
+      ##   paste(list_causas$causa, collapse="\n")
+      ## )
     ) +
-    facet_wrap(~causa_id, scales="free_y")
+    facet_wrap(~causa_id, scales="free_y") +
+    theme_bw()
   #+end_src
 
 ** Semestral
@@ -217,17 +220,18 @@
     geom_vline(aes(xintercept=as.Date(covid_BOP)), color='blue', linetype=2) + 
     geom_vline(aes(xintercept=as.Date(covid_EOP)), color='blue', linetype=2) +
     labs(
-      title = "Evolução das causas selecionadas de morte em Campinas",
-      subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
-      x = "semestre",
-      y = "número de óbitos",
-      caption = paste0(
-        "Observação:\nLinhas tracejadas em azul marcam o início e término da pandemia de COVID-19\n",
-        "Causas:\n",
-        paste(list_causas$causa, collapse="\n")
-      )
+      ## title = "Evolução das causas selecionadas de morte em Campinas",
+      ## subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
+      x = "semester",
+      y = "number of deaths",
+      ## caption = paste0(
+      ##   "Observação:\nLinhas tracejadas em azul marcam o início e término da pandemia de COVID-19\n",
+      ##   "Causas:\n",
+      ##   paste(list_causas$causa, collapse="\n")
+      ## )
     ) +
-    facet_wrap(~causa_id, scales="free_y")
+    facet_wrap(~causa_id, scales="free_y") +
+    theme_bw()
   #+end_src
 
 
@@ -305,7 +309,7 @@
                            )
 
         ## resíduos do modelo auxiliar estimdo automaticamente pelo auto.arima
-        png( filename = glue::glue('../imgs/arima/aux_ts/diagnostics/causaid{c}_freq{f}_auxts_residuals.png'), width=800, height=600)
+        pdf( filename = glue::glue('../imgs/arima/aux_ts/diagnostics/causaid{c}_freq{f}_auxts_residuals.pdf'), width=800, height=600)
         aux_ts_residuals <- checkresiduals(model)
         dev.off()
 
@@ -352,12 +356,12 @@
         )
 
         ## bondade do ajuste do modelo estimado automaticamente via auto.arima
-        png( filename = glue::glue('../imgs/arima/aux_ts/diagnostics/causaid{c}_freq{f}_auxts_gof.png'), width=800, height=600)
+        pdf( filename = glue::glue('../imgs/arima/aux_ts/diagnostics/causaid{c}_freq{f}_auxts_gof.pdf'), width=800, height=600)
         plot_caption <- paste0(
           list_causas[c,],'\n',
-          'Frequência: ', subset(freqs, freq == f)$pt,' / ',
-          'Treino: ', aux_train_BOP,'-',aux_train_EOP,' / ',
-          'Teste: ', aux_test_BOP,'-',aux_test_EOP, '\n',
+          'Frequency: ', subset(freqs, freq == f)$pt,' / ',
+          'Train: ', aux_train_BOP,'-',aux_train_EOP,' / ',
+          'Test: ', aux_test_BOP,'-',aux_test_EOP, '\n',
           'p.values: ',
           round(ljung_box_pvalue,5), '(Ljung-Box), ',
           round(kpss_pvalue,5), '(KPSS), ',
@@ -445,23 +449,24 @@
        geom_vline(aes(xintercept=as.Date(aux_test_BOP)), color='blue', linetype=2) + 
        geom_vline(aes(xintercept=as.Date(aux_test_EOP)), color='blue', linetype=2) +
        labs(
-         title = glue::glue("Evolução {subset(freqs, freq==f)$pt} das causas selecionadas de morte em Campinas (Treino 2010-2018, Teste 2019)"),
-         subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
+         ## title = glue::glue("Evolução {subset(freqs, freq==f)$pt} das causas selecionadas de morte em Campinas (Treino 2010-2018, Teste 2019)"),
+         ## subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
          x = "",
-         y = "número de óbitos",
-         caption = paste0(
-           "Observação:\nLinhas tracejadas em azul marcam o início e término do período de teste\n",
-           "Linha contínua em vermelho indica a projeção de mortes segundo modelo ARIMA\n",
-           "Linahs tracejadas em vermelho indicam o intervalo confiança de 95% para a projeção do modelo ARIMA",
-           "Causas:\n",
-           paste(list_causas$causa, collapse="\n")
-         )
+         y = "number of deaths",
+         ## caption = paste0(
+         ##   "Observação:\nLinhas tracejadas em azul marcam o início e término do período de teste\n",
+         ##   "Linha contínua em vermelho indica a projeção de mortes segundo modelo ARIMA\n",
+         ##   "Linahs tracejadas em vermelho indicam o intervalo confiança de 95% para a projeção do modelo ARIMA",
+         ##   "Causas:\n",
+         ##   paste(list_causas$causa, collapse="\n")
+         ## )
        ) +
-       facet_wrap(~causa_id, scales="free_y")
+       facet_wrap(~causa_id, scales="free_y") +
+       theme_bw()
 
      ggsave(
        plot,
-       filename = glue::glue('../imgs/arima/aux_ts/freq{f}_projections.png'),
+       filename = glue::glue('../imgs/arima/aux_ts/freq{f}_projections.pdf'),
        width = 12,
        height = 8
      )
@@ -484,23 +489,24 @@
        geom_vline(aes(xintercept=as.Date(aux_test_BOP)), color='blue', linetype=2) + 
        geom_vline(aes(xintercept=as.Date(aux_test_EOP)), color='blue', linetype=2) +
        labs(
-         title = glue::glue("Evolução {subset(freqs, freq==f)$pt} das causas selecionadas de morte em Campinas (Treino 2010-2018, Teste 2019)"),
-         subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
+         ## title = glue::glue("Evolução {subset(freqs, freq==f)$pt} das causas selecionadas de morte em Campinas (Treino 2010-2018, Teste 2019)"),
+         ## subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
          x = "",
-         y = "número de óbitos",
-         caption = paste0(
-           "Observação:\nLinhas tracejadas em azul marcam o início e término do período de teste\n",
-           "Linha contínua em vermelho indica a projeção de mortes segundo modelo ARIMA\n",
-           "Linahs tracejadas em vermelho indicam o intervalo confiança de 95% para a projeção do modelo ARIMA",
-           "Causas:\n",
-           paste(list_causas$causa, collapse="\n")
-         )
+         y = "number of deaths",
+         ## caption = paste0(
+         ##   "Observação:\nLinhas tracejadas em azul marcam o início e término do período de teste\n",
+         ##   "Linha contínua em vermelho indica a projeção de mortes segundo modelo ARIMA\n",
+         ##   "Linahs tracejadas em vermelho indicam o intervalo confiança de 95% para a projeção do modelo ARIMA",
+         ##   "Causas:\n",
+         ##   paste(list_causas$causa, collapse="\n")
+         ## )
        ) +
-       facet_wrap(~causa_id, scales="free_y")
+       facet_wrap(~causa_id, scales="free_y") +
+       theme_bw()
 
      ggsave(
        plot,
-       filename = glue::glue('../imgs/arima/aux_ts/freq{f}_projections.png'),
+       filename = glue::glue('../imgs/arima/aux_ts/freq{f}_projections.pdf'),
        width = 12,
        height = 8
      )
@@ -523,23 +529,24 @@
        geom_vline(aes(xintercept=as.Date(aux_test_BOP)), color='blue', linetype=2) + 
        geom_vline(aes(xintercept=as.Date(aux_test_EOP)), color='blue', linetype=2) +
        labs(
-         title = glue::glue("Evolução {subset(freqs, freq==f)$pt} das causas selecionadas de morte em Campinas (Treino 2010-2018, Teste 2019)"),
-         subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
+         ## title = glue::glue("Evolução {subset(freqs, freq==f)$pt} das causas selecionadas de morte em Campinas (Treino 2010-2018, Teste 2019)"),
+         ## subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
          x = "",
-         y = "número de óbitos",
-         caption = paste0(
-           "Observação:\nLinhas tracejadas em azul marcam o início e término do período de teste\n",
-           "Linha contínua em vermelho indica a projeção de mortes segundo modelo ARIMA\n",
-           "Linahs tracejadas em vermelho indicam o intervalo confiança de 95% para a projeção do modelo ARIMA",
-           "Causas:\n",
-           paste(list_causas$causa, collapse="\n")
-         )
+         y = "number of deaths",
+         ## caption = paste0(
+         ##   "Observação:\nLinhas tracejadas em azul marcam o início e término do período de teste\n",
+         ##   "Linha contínua em vermelho indica a projeção de mortes segundo modelo ARIMA\n",
+         ##   "Linahs tracejadas em vermelho indicam o intervalo confiança de 95% para a projeção do modelo ARIMA",
+         ##   "Causas:\n",
+         ##   paste(list_causas$causa, collapse="\n")
+         ## )
        ) +
-       facet_wrap(~causa_id, scales="free_y")
+       facet_wrap(~causa_id, scales="free_y") +
+       theme_bw()
 
      ggsave(
        plot,
-       filename = glue::glue('../imgs/arima/aux_ts/freq{f}_projections.png'),
+       filename = glue::glue('../imgs/arima/aux_ts/freq{f}_projections.pdf'),
        width = 12,
        height = 8
      )
@@ -562,23 +569,24 @@
        geom_vline(aes(xintercept=as.Date(aux_test_BOP)), color='blue', linetype=2) + 
        geom_vline(aes(xintercept=as.Date(aux_test_EOP)), color='blue', linetype=2) +
        labs(
-         title = glue::glue("Evolução {subset(freqs, freq==f)$pt} das causas selecionadas de morte em Campinas (Treino 2010-2018, Teste 2019)"),
-         subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
+         ## title = glue::glue("Evolução {subset(freqs, freq==f)$pt} das causas selecionadas de morte em Campinas (Treino 2010-2018, Teste 2019)"),
+         ## subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
          x = "",
-         y = "número de óbitos",
-         caption = paste0(
-           "Observação:\nLinhas tracejadas em azul marcam o início e término do período de teste\n",
-           "Linha contínua em vermelho indica a projeção de mortes segundo modelo ARIMA\n",
-           "Linahs tracejadas em vermelho indicam o intervalo confiança de 95% para a projeção do modelo ARIMA",
-           "Causas:\n",
-           paste(list_causas$causa, collapse="\n")
-         )
+         y = "number of deaths",
+         ## caption = paste0(
+         ##   "Observação:\nLinhas tracejadas em azul marcam o início e término do período de teste\n",
+         ##   "Linha contínua em vermelho indica a projeção de mortes segundo modelo ARIMA\n",
+         ##   "Linahs tracejadas em vermelho indicam o intervalo confiança de 95% para a projeção do modelo ARIMA",
+         ##   "Causas:\n",
+         ##   paste(list_causas$causa, collapse="\n")
+         ## )
        ) +
-       facet_wrap(~causa_id, scales="free_y")
+       facet_wrap(~causa_id, scales="free_y") +
+       theme_bw()
 
      ggsave(
        plot,
-       filename = glue::glue('../imgs/arima/aux_ts/freq{f}_projections.png'),
+       filename = glue::glue('../imgs/arima/aux_ts/freq{f}_projections.pdf'),
        width = 12,
        height = 8
      )
@@ -632,7 +640,7 @@
                            )
 
         ## resíduos do modelo auxiliar estimdo automaticamente pelo auto.arima
-        png( filename = glue::glue('../imgs/arima/covid_ts/diagnostics/causaid{c}_freq{f}_covidts_residuals.png'), width=800, height=600)
+        pdf( filename = glue::glue('../imgs/arima/covid_ts/diagnostics/causaid{c}_freq{f}_covidts_residuals.pdf'), width=800, height=600)
         covid_ts_residuals <- checkresiduals(model)
         dev.off()
 
@@ -677,12 +685,12 @@
         )
 
         ## bondade do ajuste do modelo estimado automaticamente via auto.arima
-        png( filename = glue::glue('../imgs/arima/covid_ts/diagnostics/causaid{c}_freq{f}_covidts_gof.png'), width=800, height=600)
+        pdf( filename = glue::glue('../imgs/arima/covid_ts/diagnostics/causaid{c}_freq{f}_covidts_gof.pdf'), width=800, height=600)
         plot_caption <- paste0(
           list_causas[c,],'\n',
-          'Frequência: ', subset(freqs, freq == f)$pt,' / ',
-          'Treino: ', ts_train_BOP,'-',ts_train_EOP,' / ',
-          'Teste: ', ts_test_BOP,'-',ts_test_EOP, '\n',
+          'Frequency: ', subset(freqs, freq == f)$pt,' / ',
+          'Train: ', ts_train_BOP,'-',ts_train_EOP,' / ',
+          'Test: ', ts_test_BOP,'-',ts_test_EOP, '\n',
           'p.values: ',
           round(ljung_box_pvalue,5), '(Ljung-Box), ',
           round(kpss_pvalue,5), '(KPSS), ',
@@ -770,23 +778,24 @@
        geom_vline(aes(xintercept=as.Date(covid_BOP)), color='blue', linetype=2) + 
        geom_vline(aes(xintercept=as.Date(covid_EOP)), color='blue', linetype=2) +
        labs(
-         title = glue::glue("Evolução {subset(freqs, freq==f)$pt} das causas selecionadas de morte em Campinas"),
-         subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
+         ## title = glue::glue("Evolução {subset(freqs, freq==f)$pt} das causas selecionadas de morte em Campinas"),
+         ## subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
          x = "",
-         y = "número de óbitos",
-         caption = paste0(
-           "Observação:\nLinhas tracejadas em azul marcam o início e término da pandemia de COVID-19\n",
-           "Linha contínua em vermelho indica a projeção de mortes segundo modelo ARIMA\n",
-           "Linahs tracejadas em vermelho indicam o intervalo confiança de 95% para a projeção do modelo ARIMA",
-           "Causas:\n",
-           paste(list_causas$causa, collapse="\n")
-         )
+         y = "number of deaths",
+         ## caption = paste0(
+         ##   "Observação:\nLinhas tracejadas em azul marcam o início e término da pandemia de COVID-19\n",
+         ##   "Linha contínua em vermelho indica a projeção de mortes segundo modelo ARIMA\n",
+         ##   "Linahs tracejadas em vermelho indicam o intervalo confiança de 95% para a projeção do modelo ARIMA",
+         ##   "Causas:\n",
+         ##   paste(list_causas$causa, collapse="\n")
+         ## )
        ) +
-       facet_wrap(~causa_id, scales="free_y")
+       facet_wrap(~causa_id, scales="free_y") +
+       theme_bw()
 
      ggsave(
        plot,
-       filename = glue::glue('../imgs/arima/covid_ts/freq{f}_projections.png'),
+       filename = glue::glue('../imgs/arima/covid_ts/freq{f}_projections.pdf'),
        width = 12,
        height = 8
      )
@@ -808,23 +817,24 @@
        geom_vline(aes(xintercept=as.Date(covid_BOP)), color='blue', linetype=2) + 
        geom_vline(aes(xintercept=as.Date(covid_EOP)), color='blue', linetype=2) +
        labs(
-         title = glue::glue("Evolução {subset(freqs, freq==f)$pt} das causas selecionadas de morte em Campinas"),
-         subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
+         ## title = glue::glue("Evolução {subset(freqs, freq==f)$pt} das causas selecionadas de morte em Campinas"),
+         ## subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
          x = "",
-         y = "número de óbitos",
-         caption = paste0(
-           "Observação:\nLinhas tracejadas em azul marcam o início e término da pandemia de COVID-19\n",
-           "Linha contínua em vermelho indica a projeção de mortes segundo modelo ARIMA\n",
-           "Linahs tracejadas em vermelho indicam o intervalo confiança de 95% para a projeção do modelo ARIMA",
-           "Causas:\n",
-           paste(list_causas$causa, collapse="\n")
-         )
+         y = "number of deaths",
+         ## caption = paste0(
+         ##   "Observação:\nLinhas tracejadas em azul marcam o início e término da pandemia de COVID-19\n",
+         ##   "Linha contínua em vermelho indica a projeção de mortes segundo modelo ARIMA\n",
+         ##   "Linahs tracejadas em vermelho indicam o intervalo confiança de 95% para a projeção do modelo ARIMA",
+         ##   "Causas:\n",
+         ##   paste(list_causas$causa, collapse="\n")
+         ## )
        ) +
-       facet_wrap(~causa_id, scales="free_y")
+       facet_wrap(~causa_id, scales="free_y") +
+       theme_bw()
 
      ggsave(
        plot,
-       filename = glue::glue('../imgs/arima/covid_ts/freq{f}_projections.png'),
+       filename = glue::glue('../imgs/arima/covid_ts/freq{f}_projections.pdf'),
        width = 12,
        height = 8
      )
@@ -846,23 +856,24 @@
        geom_vline(aes(xintercept=as.Date(covid_BOP)), color='blue', linetype=2) + 
        geom_vline(aes(xintercept=as.Date(covid_EOP)), color='blue', linetype=2) +
        labs(
-         title = glue::glue("Evolução {subset(freqs, freq==f)$pt} das causas selecionadas de morte em Campinas"),
-         subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
+         ## title = glue::glue("Evolução {subset(freqs, freq==f)$pt} das causas selecionadas de morte em Campinas"),
+         ## subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
          x = "",
-         y = "número de óbitos",
-         caption = paste0(
-           "Observação:\nLinhas tracejadas em azul marcam o início e término da pandemia de COVID-19\n",
-           "Linha contínua em vermelho indica a projeção de mortes segundo modelo ARIMA\n",
-           "Linahs tracejadas em vermelho indicam o intervalo confiança de 95% para a projeção do modelo ARIMA",
-           "Causas:\n",
-           paste(list_causas$causa, collapse="\n")
-         )
+         y = "number of deaths",
+         ## caption = paste0(
+         ##   "Observação:\nLinhas tracejadas em azul marcam o início e término da pandemia de COVID-19\n",
+         ##   "Linha contínua em vermelho indica a projeção de mortes segundo modelo ARIMA\n",
+         ##   "Linahs tracejadas em vermelho indicam o intervalo confiança de 95% para a projeção do modelo ARIMA",
+         ##   "Causas:\n",
+         ##   paste(list_causas$causa, collapse="\n")
+         ## )
        ) +
-       facet_wrap(~causa_id, scales="free_y")
+       facet_wrap(~causa_id, scales="free_y") +
+       theme_bw()
 
      ggsave(
        plot,
-       filename = glue::glue('../imgs/arima/covid_ts/freq{f}_projections.png'),
+       filename = glue::glue('../imgs/arima/covid_ts/freq{f}_projections.pdf'),
        width = 12,
        height = 8
      )
@@ -884,23 +895,24 @@
        geom_vline(aes(xintercept=as.Date(covid_BOP)), color='blue', linetype=2) + 
        geom_vline(aes(xintercept=as.Date(covid_EOP)), color='blue', linetype=2) +
        labs(
-         title = glue::glue("Evolução {subset(freqs, freq==f)$pt} das causas selecionadas de morte em Campinas"),
-         subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
+         ## title = glue::glue("Evolução {subset(freqs, freq==f)$pt} das causas selecionadas de morte em Campinas"),
+         ## subtitle = "Fonte: TABNET/Campinas, acesso em 08.09.2023",
          x = "",
-         y = "número de óbitos",
-         caption = paste0(
-           "Observação:\nLinhas tracejadas em azul marcam o início e término da pandemia de COVID-19\n",
-           "Linha contínua em vermelho indica a projeção de mortes segundo modelo ARIMA\n",
-           "Linahs tracejadas em vermelho indicam o intervalo confiança de 95% para a projeção do modelo ARIMA",
-           "Causas:\n",
-           paste(list_causas$causa, collapse="\n")
-         )
+         y = "number of deaths",
+         ## caption = paste0(
+         ##   "Observação:\nLinhas tracejadas em azul marcam o início e término da pandemia de COVID-19\n",
+         ##   "Linha contínua em vermelho indica a projeção de mortes segundo modelo ARIMA\n",
+         ##   "Linahs tracejadas em vermelho indicam o intervalo confiança de 95% para a projeção do modelo ARIMA",
+         ##   "Causas:\n",
+         ##   paste(list_causas$causa, collapse="\n")
+         ## )
        ) +
-       facet_wrap(~causa_id, scales="free_y")
+       facet_wrap(~causa_id, scales="free_y") +
+       theme_bw()
 
      ggsave(
        plot,
-       filename = glue::glue('../imgs/arima/covid_ts/freq{f}_projections.png'),
+       filename = glue::glue('../imgs/arima/covid_ts/freq{f}_projections.pdf'),
        width = 12,
        height = 8
      )
@@ -914,7 +926,8 @@
       covid_ts_xsmort %>%
       na.omit() %>%
       left_join( freqs) %>%
-      group_by( causa_id, pt ) %>%
+      rename( by = by_en ) %>%
+      group_by( causa_id, by ) %>%
       summarise(
         n = sum(n),
         forecast = sum(forecast)
@@ -923,26 +936,27 @@
         xsdeaths = n - forecast
       ) %>%
       pivot_longer(
-        cols = -c(pt,causa_id)
+        cols = -c(by,causa_id)
       ) %>%
       filter( name == 'xsdeaths') %>%
-      ggplot( aes( x = pt, y = value)) +
+      ggplot( aes( x = by, y = value)) +
       geom_col() +
       labs(
-        title = 'Estimativa do excesso de mortes por COVID-19 em Campinas/SP',
-        subtitle = 'Fonte: TABNET/Campinas, acesso em 08.09.2023\nExcesso de mortes é calculado como a diferença entre o total de mortes e a projeção do modelo ARIMA.',
-        x = 'frequência utilizada nos modelos',
-        y = 'excesso de mortes por COVID-19',
-        caption = paste0(
-          "Causas:\n",
-          paste(list_causas$causa, collapse="\n")
-        )
+        ## title = 'Estimativa do excesso de mortes por COVID-19 em Campinas/SP',
+        ## subtitle = 'Fonte: TABNET/Campinas, acesso em 08.09.2023\nExcesso de mortes é calculado como a diferença entre o total de mortes e a projeção do modelo ARIMA.',
+        x = 'frequency used in the modelling process',
+        y = 'estimated excess of deaths due to COVID-19',
+        ## caption = paste0(
+        ##   "Causas:\n",
+        ##   paste(list_causas$causa, collapse="\n")
+        ## )
       ) +
-      facet_wrap(~causa_id, scales="free_y")
+      facet_wrap(~causa_id, scales="free_y") +
+      theme_bw()
 
     ggsave(
       xsdeaths_plot,
-      filename = '../imgs/arima/covid_ts/xsdeaths.png',
+      filename = '../imgs/arima/covid_ts/xsdeaths.pdf',
       width=11,
       height=7
     )
