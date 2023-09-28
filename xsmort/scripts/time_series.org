@@ -309,7 +309,7 @@
                            )
 
         ## resíduos do modelo auxiliar estimdo automaticamente pelo auto.arima
-        pdf( filename = glue::glue('../imgs/arima/aux_ts/diagnostics/causaid{c}_freq{f}_auxts_residuals.pdf'), width=800, height=600)
+        pdf( glue::glue('../imgs/arima/aux_ts/diagnostics/causaid{c}_freq{f}_auxts_residuals.pdf') ) #, width=800, height=600)
         aux_ts_residuals <- checkresiduals(model)
         dev.off()
 
@@ -356,7 +356,7 @@
         )
 
         ## bondade do ajuste do modelo estimado automaticamente via auto.arima
-        pdf( filename = glue::glue('../imgs/arima/aux_ts/diagnostics/causaid{c}_freq{f}_auxts_gof.pdf'), width=800, height=600)
+        pdf( glue::glue('../imgs/arima/aux_ts/diagnostics/causaid{c}_freq{f}_auxts_gof.pdf') )## , width=800, height=600)
         plot_caption <- paste0(
           list_causas[c,],'\n',
           'Frequency: ', subset(freqs, freq == f)$pt,' / ',
@@ -640,7 +640,7 @@
                            )
 
         ## resíduos do modelo auxiliar estimdo automaticamente pelo auto.arima
-        pdf( filename = glue::glue('../imgs/arima/covid_ts/diagnostics/causaid{c}_freq{f}_covidts_residuals.pdf'), width=800, height=600)
+        pdf( glue::glue('../imgs/arima/covid_ts/diagnostics/causaid{c}_freq{f}_covidts_residuals.pdf') ) #, width=800, height=600)
         covid_ts_residuals <- checkresiduals(model)
         dev.off()
 
@@ -685,7 +685,7 @@
         )
 
         ## bondade do ajuste do modelo estimado automaticamente via auto.arima
-        pdf( filename = glue::glue('../imgs/arima/covid_ts/diagnostics/causaid{c}_freq{f}_covidts_gof.pdf'), width=800, height=600)
+        pdf( glue::glue('../imgs/arima/covid_ts/diagnostics/causaid{c}_freq{f}_covidts_gof.pdf') ) #, width=800, height=600)
         plot_caption <- paste0(
           list_causas[c,],'\n',
           'Frequency: ', subset(freqs, freq == f)$pt,' / ',
