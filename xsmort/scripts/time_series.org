@@ -967,6 +967,9 @@
 
   #+begin_src R
   library(ggplot2)
+  library(dplyr)
+  library(read)
+  library(tidyr)
 
   freqs <-
     tibble::tribble(
@@ -1020,6 +1023,12 @@
       size = 3,
       alpha = 1
     ) +
+    geom_line(
+      aes(group = age_grp),
+      size = 1,
+      color = "grey26",
+      alpha = 1
+    ) + 
     scale_color_manual(
       values = c(
         "Above Forecast" = "darkgreen", 
