@@ -961,3 +961,168 @@
       height=7
     )
     #+end_src
+
+
+* Óbitos efetivos versus Projeção (ARIMA)
+
+  #+begin_src R
+  library(ggplot2)
+
+  freqs <-
+    tibble::tribble(
+              ~freq,     ~by_en,          ~pt,
+              12,       'month',     'mensal',
+              6,     '2 months',  'bimestral',
+              4,     '3 months', 'trimestral',
+              2,     '6 months',  'semestral',
+            )
+
+  causas <-
+    readr::read_delim(
+             file = '../raw/causa_id.csv',
+             delim = ';'
+           )
+
+  covid_ts_xsmort <-
+    readr::read_csv2(
+             file = '../data/arima/covid_ts/covid_ts_xsmort.csv'
+           )
+
+  covid_ts_xsmort %>% 
+    na.omit() %>%
+    filter(time <= as.Date("2023-05-01")) %>%  # filtrar os dados ate maio de 2023
+    left_join(freqs) %>%
+    rename(by = by_en) %>%
+    group_by(causa_id, by) %>%
+    summarise(
+      n = sum(n),
+      forecast = sum(forecast)
+    ) %>% 
+    mutate(
+      color = ifelse(n > forecast, "Above Forecast", "Bellow Forecast"),
+      p_score = round(n / forecast, 2)
+    ) %>% 
+    pivot_longer(
+      cols = c(n,forecast)
+    ) %>%
+    mutate(
+      p_score = ifelse( name == 'n', p_score, ''),
+      name = factor(name, levels = c('n', 'forecast'))
+    ) %>% 
+    ggplot() +
+    geom_point(
+      aes(
+        x = by,
+        y = value,
+        color = color,
+        shape = name
+      ),
+      size = 3,
+      alpha = 1
+    ) +
+    scale_color_manual(
+      values = c(
+        "Above Forecast" = "darkgreen", 
+        "Bellow Forecast" = "red"
+      )
+    ) + 
+    scale_x_discrete(labels = function(x) ifelse(x == "month", expression(bold(month)), x)) +
+    labs(
+      x = 'Frequency used in the modelling process',
+      y = 'Number of effective and forecasted deaths due to COVID−19',
+      color = '',
+      shape = ''
+    ) +
+    facet_wrap(~causa_id, scales = "free") +
+    theme_gray(base_size = 10) +
+    theme(
+      legend.position = "top", 
+      axis.text.x = element_text(size = 8),
+      strip.text = element_text(size = 12),
+      strip.background = element_rect(color = "black"),  # Cor do contorno da faixa
+      ##strip.background = element_blank(),
+      legend.text = element_text(size = 12),
+      ##panel.background = element_rect(fill = "snow"),
+      ##axis.ticks.x = element_line(color = "black", size = 0.5),
+      axis.line = element_line(colour = "black", size = 0.7, linetype = "solid")
+    ) +
+    coord_flip() +
+    geom_text(
+      aes(
+        x = by,
+        y = value,
+        label = p_score, 
+        color = color
+      ),
+      size = 3.0, 
+      ## fontface = "bold", 
+      nudge_x = 0.3,
+      show.legend = FALSE, 
+      alpha = 1
+    )
+
+
+
+
+  ## covid_ts_xsmort %>% 
+  ##   na.omit() %>%
+  ##   filter(time <= as.Date("2023-05-01")) %>%  # filtrar os dados ate maio de 2023
+  ##   left_join(freqs) %>%
+  ##   rename(by = by_en) %>%
+  ##   group_by(causa_id, by) %>%
+  ##   summarise(
+  ##     n = sum(n),
+  ##     forecast = sum(forecast)
+  ##   ) %>% 
+  ##   mutate(
+  ##     xsdeaths = n - forecast,
+  ##     color = ifelse(xsdeaths >= 0, "Above Forecast", "Bellow Forecast"),
+  ##     p_score = round(n / forecast, 2)
+  ##   ) %>% 
+  ##   ggplot() +
+  ##   geom_point( aes(x = by, y = n, color = color), size = 3, alpha = 1) +
+  ##   geom_point( aes(x = by, y = forecast, color = color, shape = 22), size = 3, alpha = 1, pch = 22) + 
+  ##   scale_color_manual(
+  ##     values = c(
+  ##       "Above Forecast" = "darkgreen", 
+  ##       "Bellow Forecast" = "red"
+  ##     )
+  ##   ) + 
+  ##   scale_x_discrete(labels = function(x) ifelse(x == "month", expression(bold(month)), x)) +
+  ##   labs(
+  ##     x = 'Frequency used in the modelling process',
+  ##     y = 'Number of effective and forecasted deaths due to COVID−19'
+  ##     ## color = '',
+  ##     ## shape = ''
+  ##   ) +
+  ##   facet_wrap(~causa_id, scales = "free") +
+  ##   theme_gray(base_size = 10) +
+  ##   theme(
+  ##     legend.position = "top", 
+  ##     axis.text.x = element_text(size = 8),
+  ##     strip.text = element_text(size = 12),
+  ##     strip.background = element_rect(color = "black"),  # Cor do contorno da faixa
+  ##     ##strip.background = element_blank(),
+  ##     legend.text = element_text(size = 12),
+  ##     ##panel.background = element_rect(fill = "snow"),
+  ##     ##axis.ticks.x = element_line(color = "black", size = 0.5),
+  ##     axis.line = element_line(colour = "black", size = 0.7, linetype = "solid")
+  ##   ) +
+  ##   coord_flip() +
+  ##   geom_text(
+  ##     aes(
+  ##       x = by,
+  ##       y = n,
+  ##       label = p_score, 
+  ##       color = ifelse(xsdeaths >= 0,
+  ##                      "Above Forecast",
+  ##                      "Bellow Forecast")
+  ##     ),
+  ##     size = 2.5, 
+  ##     ## fontface = "bold", 
+  ##     nudge_x = 0.3,
+  ##     show.legend = FALSE, 
+  ##     alpha = 1
+  ##   )
+
+  #+end_src
